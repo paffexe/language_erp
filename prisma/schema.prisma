@@ -43,6 +43,12 @@ enum TransactionStatus {
   cancelled
 }
 
+enum TeacherLevel {
+  b2
+  c1
+  c2
+}
+
 model Admin {
   id          String    @id @default(uuid())
   username    String    @unique
@@ -70,7 +76,7 @@ model Teacher {
   deletedAt          DateTime?
   role               String            @default("teacher")
   specification      TeacherSpecialty?
-  level              String?
+  level              TeacherLevel      @default(b2)
   description        String?
   hourPrice          Int?
   portfolioLink      String?
