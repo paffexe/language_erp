@@ -82,8 +82,8 @@ model Teacher {
   portfolioLink      String?
   imageUrl           String?
   googleId           String           @unique
-  googleRefreshToken String           @unique
-  googleAccessToken  String           @unique
+  googleRefreshToken String?
+  googleAccessToken  String?
   rating             Int?             @default(0)
   experience         String?          @default("0 years")
   lessons            Lesson[]
