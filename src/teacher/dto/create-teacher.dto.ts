@@ -147,7 +147,7 @@ export class CreateTeacherDto {
 
   @ApiPropertyOptional({
     description: 'Teacher rating (0-5)',
-    example: 4.5,
+    example: 1,
     minimum: 0,
     maximum: 5,
   })
@@ -166,4 +166,11 @@ export class CreateTeacherDto {
   @IsString()
   @MaxLength(50)
   experience?: string;
+
+  @ApiProperty({
+    description: 'Unique Google ID for the teacher',
+    example: '1',
+  })
+  @IsString()
+  googleId: string;
 }

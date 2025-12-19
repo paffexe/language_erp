@@ -8,7 +8,7 @@ import { WinstonModule } from 'nest-winston';
 // import * as bcrypt from 'bcrypt';
 import { winstonConfig } from './common/logging/winstonLogging';
 import { AllExceptionFilter } from './common/errors/errorHandling';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 
 async function start() {
   ////
@@ -17,6 +17,18 @@ async function start() {
   });
   ////
   app.useGlobalFilters(new AllExceptionFilter());
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => {
+        console.error('Validation errors:', errors); // This will log the full details to your server console
+        return new BadRequestException(errors); // Or customize the response
+      },
+      transform: true, // Enable auto-type conversion (highly recommended)
+      whitelist: true, // Strip unknown properties
+      forbidNonWhitelisted: true, // Throw error on extra properties
+    }),
+  );
 
   const config = app.get(ConfigService);
   app.setGlobalPrefix('api');
@@ -48,13 +60,6 @@ async function start() {
     .setDescription('API documentation for Exam 4 and related entities')
     .setVersion('1.0')
     .build();
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }),
-  );
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);

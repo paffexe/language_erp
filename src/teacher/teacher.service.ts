@@ -1,8 +1,13 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { UpdatePasswordDto } from './dto/updatePassword.dto';
 
 @Injectable()
 export class TeacherService {
@@ -17,6 +22,7 @@ export class TeacherService {
       confirm_password,
       cardNumber,
       specification,
+      googleId,
     } = createTeacherDto;
 
     if (password !== confirm_password) {
@@ -28,7 +34,6 @@ export class TeacherService {
         OR: [{ email }, { cardNumber }, { phoneNumber }],
       },
     });
-
 
     if (isExists) {
       if (isExists.email === email) {
@@ -44,31 +49,90 @@ export class TeacherService {
 
     const hashPassword = await bcrypt.hash(password, 7);
 
-    // return this.prismaService.teacher.create({
-    //   data: {
-    //     specification,
-    //     fullName,
-    //     email,
-    //     phoneNumber,
-    //     cardNumber,
-    //     password: hashPassword,
-    //   },
-    // });
+    const teacher = await this.prismaService.teacher.create({
+      data: {
+        googleId,
+        specification,
+        fullName,
+        email,
+        phoneNumber,
+        cardNumber,
+        password: hashPassword,
+      },
+    });
+
+    return {
+      message: 'Teacher created successfully',
+      teacher,
+    };
   }
 
   findAll() {
-    return `This action returns all teacher`;
+    return this.prismaService.teacher.findMany();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} teacher`;
+  async findOne(id: string) {
+    const teacher = await this.prismaService.teacher.findUnique({
+      where: { id },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    return teacher;
   }
 
-  update(id: number, updateTeacherDto: UpdateTeacherDto) {
-    return `This action updates a #${id} teacher`;
+  async update(id: string, updateTeacherDto: UpdateTeacherDto) {
+    const teacher = await this.prismaService.teacher.findUnique({
+      where: { id },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    return this.prismaService.teacher.update({
+      where: { id },
+      data: updateTeacherDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} teacher`;
+  async remove(id: string) {
+    const user = await this.prismaService.teacher.findUnique({ where: { id } });
+
+    if (!user) {
+      throw new NotFoundException(`Teacher with this ${id} not found`);
+    }
+
+    return this.prismaService.teacher.delete({ where: { id } });
+  }
+
+  async updatePassword(id: string, dto: UpdatePasswordDto) {
+    const teacher = await this.prismaService.teacher.findUnique({
+      where: { id },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    const isMatch = await bcrypt.compare(dto.oldPassword, teacher.password);
+    if (!isMatch) {
+      throw new BadRequestException('Old password is incorrect');
+    }
+
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 7);
+
+    await this.prismaService.teacher.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
+
+    return { message: 'Password updated successfully' };
   }
 }
