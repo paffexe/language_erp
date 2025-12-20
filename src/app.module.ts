@@ -10,6 +10,7 @@ import { LessonTemplateModule } from './lesson-template/lesson-template.module';
 import { LessonHistoryModule } from './lesson-history/lesson-history.module';
 import { LessonModule } from './lesson/lesson.module';
 import { DeletedTeacherModule } from './deleted-teacher/deleted-teacher.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { DeletedTeacherModule } from './deleted-teacher/deleted-teacher.module';
     LessonHistoryModule,
     LessonModule,
     DeletedTeacherModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [],
