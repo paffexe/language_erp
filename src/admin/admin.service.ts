@@ -42,6 +42,8 @@ export class AdminService {
       },
     });
 
+    console.log(admin);
+
     return new AdminResponseDto(admin);
   }
 

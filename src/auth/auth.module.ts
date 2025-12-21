@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
+// import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../prisma/prisma.module';
 import { TeacherModule } from '../teacher/teacher.module';
@@ -9,7 +9,7 @@ import { RefreshTokenCookieStrategy } from '../common/strategies/refresh-token-s
 
 @Module({
   imports: [JwtModule.register({}), PrismaModule, TeacherModule],
-  controllers: [AuthController],
+  // controllers: [AuthController],
   providers: [AuthService, AccessTokenStrategy, RefreshTokenCookieStrategy],
 })
 export class AuthModule {}

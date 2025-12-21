@@ -27,7 +27,7 @@ export class CreateAdminDto {
     example: AdminRole.admin,
     description: 'Admin role',
   })
-  @IsEnum(AdminRole)
+  @IsEnum(['admin', 'superadmin'])
   role: AdminRole;
 
   @ApiProperty({ example: '+998901234567', description: 'Admin phone number' })
@@ -35,6 +35,7 @@ export class CreateAdminDto {
   @IsNotEmpty()
   phoneNumber: string;
 
-  isActive: boolean
-
+  @IsOptional()
+  @IsBoolean()
+  isActive: boolean;
 }

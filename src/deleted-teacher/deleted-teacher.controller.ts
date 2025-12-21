@@ -19,16 +19,16 @@ export class DeletedTeacherController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.deletedTeacherService.findOne(+id);
+    return this.deletedTeacherService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateDeletedTeacherDto: UpdateDeletedTeacherDto) {
-    return this.deletedTeacherService.update(+id, updateDeletedTeacherDto);
+    return this.deletedTeacherService.update(id, updateDeletedTeacherDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.deletedTeacherService.remove(+id);
+    return this.deletedTeacherService.remove(id);
   }
 }
