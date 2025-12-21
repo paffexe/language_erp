@@ -11,6 +11,8 @@ import { LessonHistoryModule } from './lesson-history/lesson-history.module';
 import { LessonModule } from './lesson/lesson.module';
 import { DeletedTeacherModule } from './deleted-teacher/deleted-teacher.module';
 import { AdminModule } from './admin/admin.module';
+import { AuthModule } from './auth/auth.module';
+
 
 @Module({
   imports: [
@@ -26,6 +28,7 @@ import { AdminModule } from './admin/admin.module';
     LessonModule,
     DeletedTeacherModule,
     AdminModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [],
