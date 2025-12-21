@@ -53,7 +53,7 @@ model Admin {
   id          String    @id @default(uuid())
   username    String    @unique
   password    String
-  role        AdminRole
+  role        AdminRole @default(admin)
   phoneNumber String    @unique
   isActive    Boolean   @default(true)
   isDeleted   Boolean   @default(false)
