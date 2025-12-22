@@ -1,34 +1,55 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { LessonTemplateService } from './lesson-template.service';
 import { CreateLessonTemplateDto } from './dto/create-lesson-template.dto';
 import { UpdateLessonTemplateDto } from './dto/update-lesson-template.dto';
+import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 
+@ApiTags('Lesson Template')
 @Controller('lesson-template')
 export class LessonTemplateController {
-  constructor(private readonly lessonTemplateService: LessonTemplateService) {}
+  constructor(
+    private readonly lessonTemplateService: LessonTemplateService,
+  ) {}
 
   @Post()
-  create(@Body() createLessonTemplateDto: CreateLessonTemplateDto) {
-    return this.lessonTemplateService.create(createLessonTemplateDto);
+  @ApiOperation({ summary: 'Create lesson template' })
+  create(@Body() dto: CreateLessonTemplateDto) {
+    return this.lessonTemplateService.create(dto);
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get all lesson templates' })
   findAll() {
     return this.lessonTemplateService.findAll();
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get lesson template by id' })
+  @ApiParam({ name: 'id', type: String })
   findOne(@Param('id') id: string) {
-    return this.lessonTemplateService.findOne(+id);
+    return this.lessonTemplateService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateLessonTemplateDto: UpdateLessonTemplateDto) {
-    return this.lessonTemplateService.update(+id, updateLessonTemplateDto);
+  @ApiOperation({ summary: 'Update lesson template' })
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateLessonTemplateDto,
+  ) {
+    return this.lessonTemplateService.update(id, dto);
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Soft delete lesson template' })
   remove(@Param('id') id: string) {
-    return this.lessonTemplateService.remove(+id);
+    return this.lessonTemplateService.remove(id);
   }
 }
