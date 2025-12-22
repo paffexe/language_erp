@@ -147,3 +147,6 @@ export class AuthController {
     return this.authService.updateTeacherProfile(user.id, dto);
   }
 }
+
+
+//controller
