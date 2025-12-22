@@ -310,11 +310,11 @@ export class AuthService {
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret: process.env.ACCESS_TOKEN_KEY,
+        secret: process.env.ADMIN_ACCESS_TOKEN_KEY,
         expiresIn: 54000,
       }),
       this.jwtService.signAsync(payload, {
-        secret: process.env.REFRESH_TOKEN_KEY,
+        secret: process.env.ADMIN_REFRESH_TOKEN_KEY,
         expiresIn: 1296000,
       }),
     ]);

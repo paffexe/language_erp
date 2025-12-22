@@ -16,19 +16,23 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { UpdateAdminProfileDto, UpdateTeacherProfileDto } from './dto/update-profile.dto';
 import { AuthResponseDto, LogoutResponseDto, RefreshResponseDto } from './dto/auth-response.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminAuthGuard } from '../common/guards/jwtAdmin-auth.guard';
 
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
   @Post('admin/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Admin login' })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({ status: 200, description: 'Login successful', type: AuthResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful',
+    type: AuthResponseDto,
+  })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @ApiResponse({ status: 403, description: 'Account is not active' })
   async loginAdmin(
@@ -41,7 +45,11 @@ export class AuthController {
   @Post('admin/logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Admin logout' })
-  @ApiResponse({ status: 200, description: 'Logout successful', type: LogoutResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Logout successful',
+    type: LogoutResponseDto,
+  })
   async logoutAdmin(@Res({ passthrough: true }) res: Response) {
     return this.authService.logoutAdmin(res);
   }
@@ -49,7 +57,11 @@ export class AuthController {
   @Post('admin/refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh admin access token' })
-  @ApiResponse({ status: 200, description: 'Token refreshed', type: RefreshResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Token refreshed',
+    type: RefreshResponseDto,
+  })
   @ApiResponse({ status: 403, description: 'Invalid refresh token' })
   async refreshAdminToken(
     @Req() req: Request,
@@ -60,7 +72,7 @@ export class AuthController {
   }
 
   @Get('admin/me')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AdminAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current admin profile' })
   @ApiResponse({ status: 200, description: 'Admin profile' })
@@ -71,7 +83,7 @@ export class AuthController {
   }
 
   @Patch('admin/me')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AdminAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update current admin profile' })
   @ApiBody({ type: UpdateAdminProfileDto })
@@ -85,12 +97,15 @@ export class AuthController {
     return this.authService.updateAdminProfile(user.id, dto);
   }
 
-
   @Post('teacher/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Teacher login (email or phone)' })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({ status: 200, description: 'Login successful', type: AuthResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful',
+    type: AuthResponseDto,
+  })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @ApiResponse({ status: 403, description: 'Account is not active' })
   async loginTeacher(
@@ -103,7 +118,11 @@ export class AuthController {
   @Post('teacher/logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Teacher logout' })
-  @ApiResponse({ status: 200, description: 'Logout successful', type: LogoutResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Logout successful',
+    type: LogoutResponseDto,
+  })
   async logoutTeacher(@Res({ passthrough: true }) res: Response) {
     return this.authService.logoutTeacher(res);
   }
@@ -111,7 +130,11 @@ export class AuthController {
   @Post('teacher/refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh teacher access token' })
-  @ApiResponse({ status: 200, description: 'Token refreshed', type: RefreshResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Token refreshed',
+    type: RefreshResponseDto,
+  })
   @ApiResponse({ status: 403, description: 'Invalid refresh token' })
   async refreshTeacherToken(
     @Req() req: Request,
@@ -122,7 +145,7 @@ export class AuthController {
   }
 
   @Get('teacher/me')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AdminAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current teacher profile' })
   @ApiResponse({ status: 200, description: 'Teacher profile' })
@@ -133,7 +156,7 @@ export class AuthController {
   }
 
   @Patch('teacher/me')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AdminAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update current teacher profile' })
   @ApiBody({ type: UpdateTeacherProfileDto })

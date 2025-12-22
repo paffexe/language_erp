@@ -10,6 +10,6 @@ import { RefreshTokenCookieStrategy } from '../common/strategies/refresh-token-s
   imports: [JwtModule.register({}), PrismaModule],
   controllers: [AuthController],
   providers: [AuthService, AccessTokenStrategy, RefreshTokenCookieStrategy],
-  exports: [AuthService],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}
