@@ -7,8 +7,7 @@ import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/logging/winstonLogging';
 import { AllExceptionFilter } from './common/errors/errorHandling';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
-import { PrismaService } from './prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
+
 
 async function start() {
   const app = await NestFactory.create(AppModule, {
