@@ -7,7 +7,7 @@ import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/logging/winstonLogging';
 import { AllExceptionFilter } from './common/errors/errorHandling';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
-
+import * as fs from 'fs';
 
 async function start() {
   const app = await NestFactory.create(AppModule, {
@@ -40,6 +40,20 @@ async function start() {
     .addBearerAuth()
     .build();
 
+  const sessionFile = './session_db.json';
+  if (fs.existsSync(sessionFile)) {
+    const stats = fs.statSync(sessionFile);
+    const fileAge = Date.now() - stats.mtimeMs;
+    const oneWeek = 7 * 24 * 60 * 60 * 1000;
+
+    if (fileAge > oneWeek) {
+      fs.unlinkSync(sessionFile);
+      console.log('🗑️ Old session file cleaned (older than 1 week)');
+    } else {
+      console.log('🗃️ Session file is recent, no cleanup needed');
+    }
+  }
+
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
@@ -47,6 +61,5 @@ async function start() {
     console.log(`Server running on port: ${PORT}`);
   });
 }
-
 
 start();
