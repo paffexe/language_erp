@@ -1,26 +1,270 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CreateTeacherPaymentDto } from './dto/create-teacher-payment.dto';
 import { UpdateTeacherPaymentDto } from './dto/update-teacher-payment.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class TeacherPaymentService {
-  create(createTeacherPaymentDto: CreateTeacherPaymentDto) {
-    return 'This action adds a new teacherPayment';
+  constructor(
+    private readonly prismaService: PrismaService,
+  ) {}
+
+  async create(createTeacherPaymentDto: CreateTeacherPaymentDto) {
+    const {
+      teacherId,
+      lessonId,
+      totalLessonAmount,
+      platformComission,
+      platformAmount,
+      teacherAmount,
+      paidBy,
+      paidAt,
+      isCanceled,
+      canceledAt,
+      canceledBy,
+      canceledReason,
+      notes,
+    } = createTeacherPaymentDto;
+
+    // Check if teacher exists
+    const teacher = await this.prismaService.teacher.findUnique({
+      where: { id: teacherId },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException(`Teacher with ID ${teacherId} not found`);
+    }
+
+    // Check if lesson exists
+    // const lesson = await this.prismaService.lesson.findUnique({
+    //   where: { id: lessonId },
+    // });
+
+    // if (!lesson) {
+    //   throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
+    // }
+
+    // Check if payment already exists for this lesson
+    const existingPayment = await this.prismaService.teacherPayment.findUnique({
+      where: { lessonId },
+    });
+
+    if (existingPayment) {
+      throw new ConflictException(
+        `Payment already exists for lesson ID ${lessonId}`,
+      );
+    }
+
+    // Validate mathematical correctness of amounts
+    // if (platformAmount + teacherAmount !== totalLessonAmount) {
+    //   throw new BadRequestException(
+    //     'Sum of platformAmount and teacherAmount must equal totalLessonAmount',
+    //   );
+    // }
+
+    // Create the payment
+    const payment = await this.prismaService.teacherPayment.create({
+      data: {
+        teacherId,
+        lessonId,
+        totalLessonAmount,
+        platformComission,
+        platformAmount,
+        teacherAmount,
+        paidBy,
+        paidAt: new Date(paidAt),
+        isCanceled: isCanceled ?? false,
+        canceledAt: canceledAt ? new Date(canceledAt) : null,
+        canceledBy: canceledBy ?? null,
+        canceledReason: canceledReason ?? null,
+        notes: notes ?? null,
+      },
+      include: {
+        teacher: true,
+        lesson: true,
+      },
+    });
+
+
+    return {
+      message: 'Teacher payment created successfully',
+      payment,
+    };
   }
 
-  findAll() {
-    return `This action returns all teacherPayment`;
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    teacherId?: string,
+    isCanceled?: boolean,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const skip = (page - 1) * limit;
+
+    // Build filter conditions
+    const where: any = {
+      isDeleted: false,
+    };
+
+    if (teacherId) {
+      where.teacherId = teacherId;
+    }
+
+    if (isCanceled !== undefined) {
+      where.isCanceled = isCanceled;
+    }
+
+    if (startDate || endDate) {
+      where.paidAt = {};
+      if (startDate) {
+        where.paidAt.gte = new Date(startDate);
+      }
+      if (endDate) {
+        where.paidAt.lte = new Date(endDate);
+      }
+    }
+
+    // Get total count for pagination
+    const total = await this.prismaService.teacherPayment.count({ where });
+
+    // Get payments with relations
+    const payments = await this.prismaService.teacherPayment.findMany({
+      where,
+      include: {
+        teacher: true,
+        lesson: true,
+      },
+      skip,
+      take: limit,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return {
+      message: 'Teacher payments retrieved successfully',
+      payments,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} teacherPayment`;
+  async findOne(id: string) {
+    const payment = await this.prismaService.teacherPayment.findFirst({
+      where: {
+        id,
+        isDeleted: false,
+      },
+      include: {
+        teacher: true,
+        lesson: true,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Teacher payment with ID ${id} not found`);
+    }
+
+    return {
+      message: 'Teacher payment retrieved successfully',
+      payment,
+    };
   }
 
-  update(id: number, updateTeacherPaymentDto: UpdateTeacherPaymentDto) {
-    return `This action updates a #${id} teacherPayment`;
+  async update(id: string, updateTeacherPaymentDto: UpdateTeacherPaymentDto) {
+    // Check if payment exists
+    const existingPayment = await this.prismaService.teacherPayment.findFirst({
+      where: {
+        id,
+        isDeleted: false,
+      },
+    });
+
+    if (!existingPayment) {
+      throw new NotFoundException(`Teacher payment with ID ${id} not found`);
+    }
+
+    // Prevent updating canceled payments
+    if (existingPayment.isCanceled) {
+      throw new BadRequestException('Cannot update a canceled payment');
+    }
+
+    // Note: teacherId and lessonId are immutable and should not be updated
+    const { teacherId, lessonId, ...updateData } =
+      updateTeacherPaymentDto as any;
+
+    // If amounts are being updated, validate mathematical correctness
+    const newPlatformAmount =
+      updateData.platformAmount ?? existingPayment.platformAmount;
+    const newTeacherAmount =
+      updateData.teacherAmount ?? existingPayment.teacherAmount;
+    const newTotalAmount =
+      updateData.totalLessonAmount ?? existingPayment.totalLessonAmount;
+
+    if (newPlatformAmount + newTeacherAmount !== newTotalAmount) {
+      throw new BadRequestException(
+        'Sum of platformAmount and teacherAmount must equal totalLessonAmount',
+      );
+    }
+
+    // Convert date strings to Date objects
+    if (updateData.paidAt) {
+      updateData.paidAt = new Date(updateData.paidAt);
+    }
+    if (updateData.canceledAt) {
+      updateData.canceledAt = new Date(updateData.canceledAt);
+    }
+
+    const payment = await this.prismaService.teacherPayment.update({
+      where: { id },
+      data: updateData,
+      include: {
+        teacher: true,
+        lesson: true,
+      },
+    });
+
+    return {
+      message: 'Teacher payment updated successfully',
+      payment,
+    };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} teacherPayment`;
+  async remove(id: string) {
+    // Check if payment exists
+    const existingPayment = await this.prismaService.teacherPayment.findFirst({
+      where: {
+        id,
+        isDeleted: false,
+      },
+    });
+
+    if (!existingPayment) {
+      throw new NotFoundException(`Teacher payment with ID ${id} not found`);
+    }
+
+    // Soft delete
+    const payment = await this.prismaService.teacherPayment.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+    });
+
+    return {
+      message: 'Teacher payment deleted successfully',
+      payment,
+    };
   }
 }

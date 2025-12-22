@@ -10,7 +10,7 @@ import { StudentQueryDto } from './dto/student-query.dto';
 
 @Injectable()
 export class StudentService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
   async create(createStudentDto: CreateStudentDto) {
     try {
       return await this.prisma.student.create({
@@ -27,35 +27,22 @@ export class StudentService {
   }
 
   async findAll(query: StudentQueryDto) {
-    const { page = 1, limit = 10, search, isActive, isBlocked } = query;
-    const skip = (page - 1) * limit;
+    const students = await this.prisma.student.findMany();
 
-    const where: any = {};
-    if (search) {
-      where.OR = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-    if (isActive !== undefined) where.isActive = isActive;
-    if (isBlocked !== undefined) where.isBlocked = isBlocked;
-
-    const [data, total] = await Promise.all([
-      this.prisma.student.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.student.count({ where }),
-    ]);
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      message: 'Students retrieved successfully',
+      students,
+    };
   }
 
   async findOne(id: string) {
     const student = await this.prisma.student.findUnique({ where: { id } });
     if (!student) throw new NotFoundException('Student not found');
-    return;
+
+    return {
+      message: 'Student found successfully',
+      student,
+    };
   }
 
   async update(id: string, updateStudentDto: UpdateStudentDto) {
@@ -110,7 +97,6 @@ export class StudentService {
       data: { isBlocked: true, blockedAt: new Date(), blockedReason: reason },
     });
   }
-
 
   async unblock(id: string) {
     const student = await this.prisma.student.findUnique({ where: { id } });

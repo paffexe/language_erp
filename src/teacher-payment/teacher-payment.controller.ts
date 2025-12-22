@@ -19,16 +19,16 @@ export class TeacherPaymentController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.teacherPaymentService.findOne(+id);
+    return this.teacherPaymentService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateTeacherPaymentDto: UpdateTeacherPaymentDto) {
-    return this.teacherPaymentService.update(+id, updateTeacherPaymentDto);
+    return this.teacherPaymentService.update(id, updateTeacherPaymentDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.teacherPaymentService.remove(+id);
+    return this.teacherPaymentService.remove(id);
   }
 }
