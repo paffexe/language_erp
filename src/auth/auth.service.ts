@@ -1,219 +1,359 @@
 import {
-  ConflictException,
+  BadRequestException,
   ForbiddenException,
   Injectable,
-  ServiceUnavailableException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-
-import { AdminService } from '../admin/admin.service';
-
+import { PrismaService } from '../prisma/prisma.service';
+import { LoginDto } from './dto/login.dto';
+import { UpdateAdminProfileDto, UpdateTeacherProfileDto } from './dto/update-profile.dto';
+import { Tokens } from '../common/types/tokens.type';
+import { Admin, Teacher } from '../../generated/prisma/client';
 import * as bcrypt from 'bcrypt';
 import { Response } from 'express';
-import { Tokens } from '../common/types/tokens.type';
-import { TeacherService } from '../teacher/teacher.service';
-import { JwtPayload } from '../common/types/admin/admin.payload.types';
-import { Admin } from '../../generated/prisma/browser';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prismaService: PrismaService,
+    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly teacherService: TeacherService,
-  ) {}
+  ) { }
 
-  async generateTokens(admin: Admin) {
-    const payload: JwtPayload = {
+
+  async loginAdmin(dto: LoginDto, res: Response) {
+    const admin = await this.prisma.admin.findFirst({
+      where: { username: dto.username, isDeleted: false },
+    });
+
+    if (!admin) {
+      throw new UnauthorizedException('Username yoki parol noto\'g\'ri');
+    }
+
+    if (!admin.isActive) {
+      throw new ForbiddenException('Akkaunt faol emas');
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.password, admin.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Username yoki parol noto\'g\'ri');
+    }
+
+    const tokens = await this.generateAdminTokens(admin);
+
+    this.setRefreshTokenCookie(res, tokens.refreshToken, 'admin');
+
+    return {
+      message: 'Tizimga muvaffaqiyatli kirdingiz',
+      id: admin.id,
+      role: admin.role,
+      accessToken: tokens.accessToken,
+    };
+  }
+
+  async logoutAdmin(res: Response) {
+    res.clearCookie('adminRefreshToken');
+    return { message: 'Tizimdan muvaffaqiyatli chiqdingiz' };
+  }
+
+  async refreshAdminToken(refreshToken: string, res: Response) {
+    if (!refreshToken) {
+      throw new ForbiddenException('Refresh token topilmadi');
+    }
+
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.REFRESH_TOKEN_KEY,
+      });
+
+      const admin = await this.prisma.admin.findFirst({
+        where: { id: payload.id, isDeleted: false, isActive: true },
+      });
+
+      if (!admin) {
+        throw new ForbiddenException('Admin topilmadi');
+      }
+
+      const tokens = await this.generateAdminTokens(admin);
+      this.setRefreshTokenCookie(res, tokens.refreshToken, 'admin');
+
+      return {
+        message: 'Token yangilandi',
+        accessToken: tokens.accessToken,
+      };
+    } catch {
+      throw new ForbiddenException('Refresh token yaroqsiz');
+    }
+  }
+
+
+
+  async getAdminProfile(adminId: string) {
+    const admin = await this.prisma.admin.findFirst({
+      where: { id: adminId, isDeleted: false },
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        phoneNumber: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!admin) {
+      throw new NotFoundException('Admin topilmadi');
+    }
+
+    return admin;
+  }
+
+  async updateAdminProfile(adminId: string, dto: UpdateAdminProfileDto) {
+    const admin = await this.prisma.admin.findFirst({
+      where: { id: adminId, isDeleted: false },
+    });
+
+    if (!admin) {
+      throw new NotFoundException('Admin topilmadi');
+    }
+
+    if (dto.username && dto.username !== admin.username) {
+      const exists = await this.prisma.admin.findFirst({
+        where: { username: dto.username, isDeleted: false },
+      });
+      if (exists) {
+        throw new BadRequestException('Bu username allaqachon mavjud');
+      }
+    }
+    if (dto.phoneNumber && dto.phoneNumber !== admin.phoneNumber) {
+      const exists = await this.prisma.admin.findFirst({
+        where: { phoneNumber: dto.phoneNumber, isDeleted: false },
+      });
+      if (exists) {
+        throw new BadRequestException('Bu telefon raqam allaqachon mavjud');
+      }
+    }
+
+    const updated = await this.prisma.admin.update({
+      where: { id: adminId },
+      data: dto,
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        phoneNumber: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      message: 'Profil yangilandi',
+      admin: updated,
+    };
+  }
+
+
+  async loginTeacher(dto: LoginDto, res: Response) {
+    const teacher = await this.prisma.teacher.findFirst({
+      where: {
+        OR: [{ email: dto.username }, { phoneNumber: dto.username }],
+        isDeleted: false,
+      },
+    });
+
+    if (!teacher) {
+      throw new UnauthorizedException('Email/telefon yoki parol noto\'g\'ri');
+    }
+
+    if (!teacher.isActive) {
+      throw new ForbiddenException('Akkaunt faol emas');
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.password, teacher.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Email/telefon yoki parol noto\'g\'ri');
+    }
+
+    const tokens = await this.generateTeacherTokens(teacher);
+    this.setRefreshTokenCookie(res, tokens.refreshToken, 'teacher');
+
+    return {
+      message: 'Tizimga muvaffaqiyatli kirdingiz',
+      id: teacher.id,
+      role: 'teacher',
+      accessToken: tokens.accessToken,
+    };
+  }
+
+  async logoutTeacher(res: Response) {
+    res.clearCookie('teacherRefreshToken');
+    return { message: 'Tizimdan muvaffaqiyatli chiqdingiz' };
+  }
+
+  async refreshTeacherToken(refreshToken: string, res: Response) {
+    if (!refreshToken) {
+      throw new ForbiddenException('Refresh token topilmadi');
+    }
+
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.REFRESH_TOKEN_KEY,
+      });
+
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { id: payload.id, isDeleted: false, isActive: true },
+      });
+
+      if (!teacher) {
+        throw new ForbiddenException('Teacher topilmadi');
+      }
+
+      const tokens = await this.generateTeacherTokens(teacher);
+      this.setRefreshTokenCookie(res, tokens.refreshToken, 'teacher');
+
+      return {
+        message: 'Token yangilandi',
+        accessToken: tokens.accessToken,
+      };
+    } catch {
+      throw new ForbiddenException('Refresh token yaroqsiz');
+    }
+  }
+
+
+  async getTeacherProfile(teacherId: string) {
+    const teacher = await this.prisma.teacher.findFirst({
+      where: { id: teacherId, isDeleted: false },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phoneNumber: true,
+        specification: true,
+        level: true,
+        description: true,
+        hourPrice: true,
+        portfolioLink: true,
+        imageUrl: true,
+        rating: true,
+        experience: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher topilmadi');
+    }
+
+    return teacher;
+  }
+
+  async updateTeacherProfile(teacherId: string, dto: UpdateTeacherProfileDto) {
+    const teacher = await this.prisma.teacher.findFirst({
+      where: { id: teacherId, isDeleted: false },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher topilmadi');
+    }
+
+    if (dto.phoneNumber && dto.phoneNumber !== teacher.phoneNumber) {
+      const exists = await this.prisma.teacher.findFirst({
+        where: { phoneNumber: dto.phoneNumber, isDeleted: false },
+      });
+      if (exists) {
+        throw new BadRequestException('Bu telefon raqam allaqachon mavjud');
+      }
+    }
+
+    const updated = await this.prisma.teacher.update({
+      where: { id: teacherId },
+      data: dto,
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phoneNumber: true,
+        specification: true,
+        level: true,
+        description: true,
+        hourPrice: true,
+        portfolioLink: true,
+        imageUrl: true,
+        rating: true,
+        experience: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      message: 'Profil yangilandi',
+      teacher: updated,
+    };
+  }
+
+
+  private async generateAdminTokens(admin: Admin): Promise<Tokens> {
+    const payload = {
       id: admin.id,
       role: admin.role,
       is_active: admin.isActive,
     };
 
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: process.env.ACCESS_TOKEN_KEY,
+        expiresIn: 54000,
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: process.env.REFRESH_TOKEN_KEY,
+        expiresIn: 1296000,
+      }),
+    ]);
 
-    // const [accessToken, refreshToken] = await Promise.all([
-    //   this.jwtService.signAsync(payload, {
-    //     secret: process.env.ACCESS_TOKEN_KEY,
-    //     expiresIn: process.env.ACCESS_TOKEN_TIME,
-    //   }),
-    //   this.jwtService.signAsync(payload, {
-    //     secret: process.env.REFRESH_TOKEN_KEY,
-    //     expiresIn: process.env.REFRESH_TOKEN_TIME,
-    //   }),
-    // ]);
-    // return {
-    //   accessToken,
-    //   refreshToken,
-    // };
+    return { accessToken, refreshToken };
   }
 
-  // async generateAdminTokens(admin: Admin) {
-  //   const payload: JwtPayload = {
-  //     id: admin.id,
-  //     role: admin.role,
-  //     is_active: admin.isActive,
-  //   };
+  private async generateTeacherTokens(teacher: Teacher): Promise<Tokens> {
+    const payload = {
+      id: teacher.id,
+      role: teacher.role,
+      is_active: teacher.isActive,
+    };
 
-  //   const [accessToken, refreshToken] = await Promise.all([
-  //     this.jwtService.signAsync(payload, {
-  //       secret: process.env.ADMIN_ACCESS_TOKEN_KEY!,
-  //       expiresIn: process.env.ADMIN_ACCESS_TOKEN_TIME!,
-  //     }),
-  //     this.jwtService.signAsync(payload, {
-  //       secret: process.env.ADMIN_REFRESH_TOKEN_KEY!,
-  //       expiresIn: process.env.ADMIN_REFRESH_TOKEN_TIME!,
-  //     }),
-  //   ]);
-  //   return {
-  //     accessToken,
-  //     refreshToken,
-  //   };
-  // }
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: process.env.ACCESS_TOKEN_KEY,
+        expiresIn: 54000,
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: process.env.REFRESH_TOKEN_KEY,
+        expiresIn: 1296000,
+      }),
+    ]);
 
-  // admin
-  // async logInAdmin(loginAdmin: SignInAdminDto, res: Response) {
-  //   const { email, password: log_password } = loginAdmin;
+    return { accessToken, refreshToken };
+  }
 
-  //   const admin = await this.prismaService.admin.findUnique({
-  //     where: { email },
-  //   });
 
-  //   if (!admin) {
-  //     throw new UnauthorizedException("Email yoki password noto'g'ri");
-  //   }
+  private setRefreshTokenCookie(res: Response, token: string, type: 'admin' | 'teacher') {
+    const cookieName = type === 'admin' ? 'adminRefreshToken' : 'teacherRefreshToken';
+    const maxAge = type === 'admin'
+      ? Number(process.env.ADMIN_COOKIE_TIME) || 1296000000
+      : Number(process.env.COOKIE_TIME) || 1296000000;
 
-  //   const isValid = await bcrypt.compare(log_password, admin.password);
-
-  //   if (!isValid) {
-  //     throw new UnauthorizedException("Email yoki password noto'g'ri");
-  //   }
-
-  //   const { accessToken, refreshToken } = await this.generateAdminTokens(admin);
-  //   const refresh_token = await bcrypt.hash(refreshToken, 7);
-  //   await this.prismaService.admin.update({
-  //     where: { id: admin.id },
-  //     data: { refresh_token, is_active: true },
-  //   });
-
-  //   res.cookie('refreshToken', refreshToken, {
-  //     maxAge: +process.env.ADMIN_COOKIE_TIME!,
-  //     httpOnly: true,
-  //   });
-
-  //   return { message: 'Tizimga xush kelibsiz', id: admin.id, accessToken };
-  // }
-
-  // async logoutAdmin(adminId: number, res: Response) {
-  //   const user = await this.prismaService.admin.updateMany({
-  //     where: {
-  //       id: adminId,
-  //       refresh_token: {
-  //         not: null,
-  //       },
-  //     },
-  //     data: {
-  //       refresh_token: null,
-  //       is_active: false,
-  //     },
-  //   });
-
-  //   if (!user) throw new ForbiddenException('Access denied');
-  //   res.clearCookie('refreshToken');
-  //   return true;
-  // }
-
-  // async refreshAdminToken(
-  //   userId: number,
-  //   refreshToken: string,
-  //   res: Response,
-  // ): Promise<AdminResponseFields> {
-  //   const user = await this.prismaService.admin.findUnique({
-  //     where: { id: userId },
-  //   });
-
-  //   if (!user || !user.refresh_token)
-  //     throw new ForbiddenException('Access denied');
-
-  //   const rtMatches = await bcrypt.compare(refreshToken, user.refresh_token);
-
-  //   if (!rtMatches) {
-  //     throw new ForbiddenException('Access denied');
-  //   }
-
-  //   const tokens: Tokens = await this.generateAdminTokens(user);
-
-  //   // const hashedRefreshToken = await bcrypt.hash(tokens.accessToken, 7);
-  //   const hashedRefreshToken = await bcrypt.hash(tokens.accessToken, 7);
-
-  //   await this.prismaService.admin.update({
-  //     where: { id: user.id },
-  //     data: { refresh_token: hashedRefreshToken },
-  //   });
-
-  //   res.cookie('refreshToken', tokens.refreshToken, {
-  //     maxAge: +process.env.ADMIN_COOKIE_TIME!,
-  //     httpOnly: true,
-  //   });
-
-  //   return {
-  //     message: 'User refreshed successfully',
-  //     adminId: user.id,
-  //     accessToken: tokens.accessToken,
-  //   };
-  // }
-
-  // // super admin
-
-  // async superAdminLog(loginAdmin: SignInAdminDto, res: Response) {
-  //   const { email, password: log_password } = loginAdmin;
-
-  //   const admin = await this.prismaService.rootUser.findUnique({
-  //     where: { email },
-  //   });
-
-  //   if (!admin) {
-  //     throw new UnauthorizedException("Email yoki password noto'g'ri");
-  //   }
-
-  //   const isValid = await bcrypt.compare(log_password, admin.password);
-
-  //   if (!isValid) {
-  //     throw new UnauthorizedException("Email yoki password noto'g'ri");
-  //   }
-
-  //   const { accessToken, refreshToken } = await this.generateAdminTokens(admin);
-  //   const refresh_token = await bcrypt.hash(refreshToken, 7);
-  //   await this.prismaService.rootUser.update({
-  //     where: { id: admin.id },
-  //     data: { refresh_token, is_active: true },
-  //   });
-
-  //   res.cookie('refreshToken', refreshToken, {
-  //     maxAge: +process.env.ADMIN_COOKIE_TIME!,
-  //     httpOnly: true,
-  //   });
-
-  //   return { message: 'Tizimga xush kelibsiz', id: admin.id, accessToken };
-  // }
-
-  // async logoutSuperAdmin(adminId: number, res: Response) {
-  //   const user = await this.prismaService.admin.updateMany({
-  //     where: {
-  //       id: adminId,
-  //       refresh_token: {
-  //         not: null,
-  //       },
-  //     },
-  //     data: {
-  //       refresh_token: null,
-  //       is_active: false,
-  //     },
-  //   });
-
-  //   if (!user) throw new ForbiddenException('Access denied');
-  //   res.clearCookie('refreshToken');
-  //   return true;
-  // }
+    res.cookie(cookieName, token, {
+      httpOnly: true,
+      maxAge,
+      sameSite: 'strict',
+    });
+  }
 }
