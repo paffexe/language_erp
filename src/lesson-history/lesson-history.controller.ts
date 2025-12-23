@@ -25,18 +25,14 @@ import {
   ApiNotFoundResponse,
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @ApiTags('Lesson History')
 @ApiForbiddenResponse({ description: 'Forbidden' })
-@UseGuards(RolesGuard)
 @Controller('lesson-history')
 export class LessonHistoryController {
   constructor(private readonly lessonHistoryService: LessonHistoryService) {}
 
   @Post()
-  @Roles('teacher', 'admin')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create lesson history (rating & feedback)' })
   @ApiCreatedResponse({ description: 'Lesson history created successfully' })
@@ -46,14 +42,10 @@ export class LessonHistoryController {
   }
 
   @Get()
-  @Roles('teacher', 'admin')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get all lesson histories with pagination' })
   @ApiOkResponse({ description: 'Lesson histories retrieved successfully' })
-  findAll(
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-  ) {
+  findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
     const pageNum = Number(page) || 1;
     const limitNum = Number(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
@@ -72,7 +64,6 @@ export class LessonHistoryController {
   }
 
   @Get(':id')
-  @Roles('teacher', 'admin')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get lesson history by id' })
   @ApiParam({ name: 'id', type: String })
@@ -82,7 +73,6 @@ export class LessonHistoryController {
   }
 
   @Patch(':id')
-  @Roles('teacher', 'admin')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update lesson history' })
   @ApiBadRequestResponse({ description: 'Validation error' })
@@ -94,7 +84,6 @@ export class LessonHistoryController {
   }
 
   @Delete(':id')
-  @Roles('teacher', 'admin')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft delete lesson history' })
   @ApiNotFoundResponse({ description: 'Lesson history not found' })

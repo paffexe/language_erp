@@ -14,7 +14,6 @@ export class LessonHistoryService {
 
   async create(dto: CreateLessonHistoryDto) {
     try {
-      // 1️⃣ Teacher mavjudligi va status tekshiruvi
       const teacher = await this.prisma.teacher.findUnique({
         where: { id: dto.teacherId },
       });
@@ -22,7 +21,6 @@ export class LessonHistoryService {
         throw new NotFoundException('Teacher not found or inactive');
       }
 
-      // 2️⃣ Student mavjudligi tekshiruvi
       const student = await this.prisma.student.findUnique({
         where: { id: dto.studentId },
       });
@@ -30,7 +28,6 @@ export class LessonHistoryService {
         throw new NotFoundException('Student not found or inactive');
       }
 
-      // 3️⃣ Duplicate check: bir teacher va student uchun bir xil lesson bo‘lmasligini tekshirish
       const existingHistory = await this.prisma.lessonHistory.findFirst({
         where: {
           lessonId: dto.lessonId,
@@ -46,7 +43,6 @@ export class LessonHistoryService {
         );
       }
 
-      // 4️⃣ LessonHistory yaratish
       const history = await this.prisma.lessonHistory.create({
         data: {
           lessonId: dto.lessonId,
@@ -57,7 +53,6 @@ export class LessonHistoryService {
         },
       });
 
-      // 5️⃣ Clear response
       return {
         statusCode: 201,
         message: 'Lesson history created successfully',
@@ -148,7 +143,6 @@ export class LessonHistoryService {
 
   async update(id: string, dto: UpdateLessonHistoryDto) {
     try {
-      // 1️⃣ mavjud lesson history ni tekshirish
       const existingHistory = await this.prisma.lessonHistory.findFirst({
         where: { id, isDeleted: false },
       });
@@ -157,7 +151,6 @@ export class LessonHistoryService {
         throw new NotFoundException('Lesson history not found');
       }
 
-      // 2️⃣ teacher validatsiyasi (agar o‘zgargan bo‘lsa)
       const teacherId = dto.teacherId ?? existingHistory.teacherId;
       const teacher = await this.prisma.teacher.findUnique({
         where: { id: teacherId },
@@ -166,7 +159,6 @@ export class LessonHistoryService {
         throw new NotFoundException('Teacher not found or inactive');
       }
 
-      // 3️⃣ student validatsiyasi (agar o‘zgargan bo‘lsa)
       const studentId = dto.studentId ?? existingHistory.studentId;
       const student = await this.prisma.student.findUnique({
         where: { id: studentId },
@@ -175,7 +167,6 @@ export class LessonHistoryService {
         throw new NotFoundException('Student not found or inactive');
       }
 
-      // 4️⃣ Duplicate check: bir teacher-student-lesson uchun mavjud yozuv
       const duplicate = await this.prisma.lessonHistory.findFirst({
         where: {
           id: { not: id },
@@ -191,7 +182,6 @@ export class LessonHistoryService {
         );
       }
 
-      // 5️⃣ update qilish
       const updatedHistory = await this.prisma.lessonHistory.update({
         where: { id },
         data: {
@@ -201,7 +191,6 @@ export class LessonHistoryService {
         },
       });
 
-      // 6️⃣ Chiroyli response
       return {
         statusCode: 200,
         message: 'Lesson history updated successfully',
@@ -222,7 +211,6 @@ export class LessonHistoryService {
 
   async remove(id: string) {
     try {
-      // 1️⃣ Lesson history mavjudligini tekshirish
       const history = await this.prisma.lessonHistory.findFirst({
         where: { id, isDeleted: false },
       });
@@ -233,8 +221,6 @@ export class LessonHistoryService {
         );
       }
 
-      // 🔒 OPTIONAL BUSINESS RULE:
-      // Masalan, agar lesson asosida dars yaratilgan bo‘lsa, delete ni bloklash
       const dependentLesson = await this.prisma.lesson.findFirst({
         where: { id: history.lessonId, isDeleted: false },
       });
@@ -245,7 +231,6 @@ export class LessonHistoryService {
         );
       }
 
-      // 2️⃣ Soft delete
       const deletedHistory = await this.prisma.lessonHistory.update({
         where: { id },
         data: {
@@ -254,7 +239,6 @@ export class LessonHistoryService {
         },
       });
 
-      // 3️⃣ Chiroyli response
       return {
         statusCode: 200,
         message: 'Lesson history deleted successfully',
