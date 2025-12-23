@@ -6,6 +6,11 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { LessonService } from './lesson.service';
 import { CreateLessonDto } from './dto/create-lesson.dto';
@@ -14,44 +19,89 @@ import {
   ApiTags,
   ApiOperation,
   ApiParam,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiForbiddenResponse,
 } from '@nestjs/swagger';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @ApiTags('Lesson')
+@ApiForbiddenResponse({ description: 'Forbidden' })
+@UseGuards(RolesGuard)
 @Controller('lesson')
 export class LessonController {
   constructor(private readonly lessonService: LessonService) {}
 
   @Post()
+
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create new lesson' })
+  @ApiCreatedResponse({ description: 'Lesson created successfully' })
+  @ApiBadRequestResponse({ description: 'Validation error' })
   create(@Body() dto: CreateLessonDto) {
     return this.lessonService.create(dto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all lessons' })
-  findAll() {
-    return this.lessonService.findAll();
-  }
+@Get()
+// @Roles('teacher')
+@HttpCode(HttpStatus.OK)
+@ApiOperation({ summary: 'Get all lessons' })
+@ApiOkResponse({ description: 'Lessons retrieved successfully' })
+findAll(
+  @Query('page') page = 1,
+  @Query('limit') limit = 10,
+) {
+  const pageNum = Number(page) || 1;
+  const limitNum = Number(limit) || 10;
+  const startIndex = (pageNum - 1) * limitNum;
+  const endIndex = startIndex + limitNum;
+
+  return this.lessonService.findAll().then((res) => {
+    const paginatedLessons = res.lessons.slice(startIndex, endIndex);
+
+    return {
+      statusCode: 200,
+      message: 'Lessons retrieved successfully',
+      count: res.count,
+      page: pageNum,
+      limit: limitNum,
+      lessons: paginatedLessons,
+    };
+  });
+}
+
 
   @Get(':id')
+  // @Roles('teacher')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get lesson by id' })
   @ApiParam({ name: 'id', type: String })
-  findOne(@Param('id') id: string) {
+  @ApiNotFoundResponse({ description: 'Lesson not found' })
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.lessonService.findOne(id);
   }
 
   @Patch(':id')
+  // @Roles('teacher')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update lesson' })
+  @ApiBadRequestResponse({ description: 'Validation error' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateLessonDto,
   ) {
     return this.lessonService.update(id, dto);
   }
 
   @Delete(':id')
+  // @Roles('teacher')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete lesson (soft delete)' })
-  remove(@Param('id') id: string) {
+  @ApiNotFoundResponse({ description: 'Lesson not found' })
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.lessonService.remove(id);
   }
 }
