@@ -18,7 +18,7 @@ export class BotUpdate {
       if (!student) {
         await ctx.scene.enter('registration');
       } else {
-        await ctx.replyWithHTML(`✅ <b>Xush kelibsiz, Abdulaziz!</b>
+        await ctx.replyWithHTML(`✅ <b>Xush kelibsiz, ${ctx.from?.first_name}!</b>
 
 📚 Siz allaqachon ro'yxatdan o'tgansiz.
 

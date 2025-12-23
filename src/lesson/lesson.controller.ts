@@ -25,12 +25,9 @@ import {
   ApiNotFoundResponse,
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @ApiTags('Lesson')
 @ApiForbiddenResponse({ description: 'Forbidden' })
-@UseGuards(RolesGuard)
 @Controller('lesson')
 export class LessonController {
   constructor(private readonly lessonService: LessonService) {}

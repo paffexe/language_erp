@@ -26,17 +26,14 @@ import {
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @ApiTags('Lesson Template')
 @ApiForbiddenResponse({ description: 'Forbidden' })
-@UseGuards(RolesGuard)
 @Controller('lesson-template')
 export class LessonTemplateController {
   constructor(private readonly lessonTemplateService: LessonTemplateService) {}
 
   @Post()
-  @Roles('teacher')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create lesson template' })
   @ApiCreatedResponse({ description: 'Lesson template created successfully' })
@@ -46,7 +43,6 @@ export class LessonTemplateController {
   }
 
 @Get()
-@Roles('teacher')
 @HttpCode(HttpStatus.OK)
 @ApiOperation({ summary: 'Get all lesson templates' })
 @ApiOkResponse({ description: 'Lesson templates retrieved successfully' })
@@ -76,7 +72,6 @@ findAll(
 
 
   @Get(':id')
-  @Roles('teacher')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get lesson template by id' })
   @ApiParam({ name: 'id', type: String })
@@ -86,7 +81,6 @@ findAll(
   }
 
   @Patch(':id')
-  @Roles('teacher')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update lesson template' })
   @ApiBadRequestResponse({ description: 'Validation error' })
@@ -98,7 +92,6 @@ findAll(
   }
 
   @Delete(':id')
-  @Roles('teacher')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft delete lesson template' })
   @ApiNotFoundResponse({ description: 'Lesson template not found' })
