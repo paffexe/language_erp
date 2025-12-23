@@ -15,9 +15,7 @@ import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 @ApiTags('Lesson History')
 @Controller('lesson-history')
 export class LessonHistoryController {
-  constructor(
-    private readonly lessonHistoryService: LessonHistoryService,
-  ) {}
+  constructor(private readonly lessonHistoryService: LessonHistoryService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create lesson history (rating & feedback)' })
@@ -40,10 +38,7 @@ export class LessonHistoryController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update lesson history' })
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateLessonHistoryDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateLessonHistoryDto) {
     return this.lessonHistoryService.update(id, dto);
   }
 

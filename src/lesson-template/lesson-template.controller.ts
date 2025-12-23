@@ -25,7 +25,6 @@ import {
   ApiNotFoundResponse,
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
-import { Roles } from 'src/common/decorators/roles.decorator';
 
 @ApiTags('Lesson Template')
 @ApiForbiddenResponse({ description: 'Forbidden' })
@@ -42,34 +41,29 @@ export class LessonTemplateController {
     return this.lessonTemplateService.create(dto);
   }
 
-@Get()
-@HttpCode(HttpStatus.OK)
-@ApiOperation({ summary: 'Get all lesson templates' })
-@ApiOkResponse({ description: 'Lesson templates retrieved successfully' })
-findAll(
-  @Query('page') page = 1,
-  @Query('limit') limit = 10,
-) {
-  // page va limit raqamlarini integerga o‘tkazamiz
-  const pageNum = Number(page) || 1;
-  const limitNum = Number(limit) || 10;
-  const startIndex = (pageNum - 1) * limitNum;
-  const endIndex = startIndex + limitNum;
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get all lesson templates' })
+  @ApiOkResponse({ description: 'Lesson templates retrieved successfully' })
+  findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 10;
+    const startIndex = (pageNum - 1) * limitNum;
+    const endIndex = startIndex + limitNum;
 
-  return this.lessonTemplateService.findAll().then((res) => {
-    const paginatedTemplates = res.templates.slice(startIndex, endIndex);
+    return this.lessonTemplateService.findAll().then((res) => {
+      const paginatedTemplates = res.templates.slice(startIndex, endIndex);
 
-    return {
-      statusCode: 200,
-      message: 'Lesson templates retrieved successfully',
-      count: res.count,
-      page: pageNum,
-      limit: limitNum,
-      templates: paginatedTemplates,
-    };
-  });
-}
-
+      return {
+        statusCode: 200,
+        message: 'Lesson templates retrieved successfully',
+        count: res.count,
+        page: pageNum,
+        limit: limitNum,
+        templates: paginatedTemplates,
+      };
+    });
+  }
 
   @Get(':id')
   @HttpCode(HttpStatus.OK)

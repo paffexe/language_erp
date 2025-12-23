@@ -14,7 +14,6 @@ export class LessonTemplateService {
 
   async create(dto: CreateLessonTemplateDto) {
     try {
-      // 1️⃣ Teacher mavjudligini tekshirish
       const teacher = await this.prisma.teacher.findUnique({
         where: { id: dto.teacherId },
       });
@@ -22,12 +21,10 @@ export class LessonTemplateService {
         throw new NotFoundException('Teacher not found');
       }
 
-      // 2️⃣ Teacher faol ekanligini tekshirish
       if (!teacher.isActive || teacher.isDeleted) {
         throw new BadRequestException('Teacher is not active');
       }
 
-      // 3️⃣ Duplicate template tekshiruvi (nom + timeSlot + teacher)
       const existingTemplate = await this.prisma.lessonTemplate.findFirst({
         where: {
           teacherId: dto.teacherId,
@@ -42,7 +39,6 @@ export class LessonTemplateService {
         );
       }
 
-      // 4️⃣ Create
       const template = await this.prisma.lessonTemplate.create({
         data: {
           teacherId: dto.teacherId,
@@ -67,13 +63,11 @@ export class LessonTemplateService {
 
       console.error('LessonTemplate creation error:', error);
 
-      throw new InternalServerErrorException(
-        'Lesson template creation failed',
-      );
+      throw new InternalServerErrorException('Lesson template creation failed');
     }
   }
 
-   async findAll() {
+  async findAll() {
     try {
       const [templates, count] = await this.prisma.$transaction([
         this.prisma.lessonTemplate.findMany({
@@ -136,9 +130,8 @@ export class LessonTemplateService {
     }
   }
 
-   async update(id: string, dto: UpdateLessonTemplateDto) {
+  async update(id: string, dto: UpdateLessonTemplateDto) {
     try {
-      // 1️⃣ Template mavjudligini tekshirish
       const existingTemplate = await this.prisma.lessonTemplate.findFirst({
         where: { id, isDeleted: false },
       });
@@ -147,7 +140,6 @@ export class LessonTemplateService {
         throw new NotFoundException('Lesson template not found');
       }
 
-      // 2️⃣ Teacher mavjudligini va aktivligini tekshirish (agar teacherId o‘zgargan bo‘lsa)
       const teacherId = dto.teacherId ?? existingTemplate.teacherId;
       const teacher = await this.prisma.teacher.findUnique({
         where: { id: teacherId },
@@ -161,7 +153,6 @@ export class LessonTemplateService {
         throw new BadRequestException('Teacher is not active');
       }
 
-      // 3️⃣ Duplicate check (nom + timeSlot + teacher) excluding o‘zini
       const duplicateTemplate = await this.prisma.lessonTemplate.findFirst({
         where: {
           id: { not: id },
@@ -178,7 +169,6 @@ export class LessonTemplateService {
         );
       }
 
-      // 4️⃣ UPDATE
       const updatedTemplate = await this.prisma.lessonTemplate.update({
         where: { id },
         data: {
@@ -205,11 +195,10 @@ export class LessonTemplateService {
         'Failed to update lesson template',
       );
     }
-  } 
+  }
 
   async remove(id: string) {
     try {
-      // 1️⃣ Template mavjudligini tekshirish
       const template = await this.prisma.lessonTemplate.findFirst({
         where: { id, isDeleted: false },
       });
@@ -220,10 +209,12 @@ export class LessonTemplateService {
         );
       }
 
-      // 2️⃣ OPTIONAL BUSINESS RULE:
-      // Agar template ishlatilayotgan bo‘lsa (masalan, asosiy Lesson yaratilgan bo‘lsa), o‘chirmaslik
       const usedInLesson = await this.prisma.lesson.findFirst({
-        where: { isDeleted: false, teacherId: template.teacherId, name: template.name },
+        where: {
+          isDeleted: false,
+          teacherId: template.teacherId,
+          name: template.name,
+        },
       });
 
       if (usedInLesson) {
@@ -232,7 +223,6 @@ export class LessonTemplateService {
         );
       }
 
-      // 3️⃣ Soft delete
       const deletedTemplate = await this.prisma.lessonTemplate.update({
         where: { id },
         data: {
