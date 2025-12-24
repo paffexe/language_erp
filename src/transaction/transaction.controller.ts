@@ -9,6 +9,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,6 +17,7 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TransactionService } from './transaction.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -23,12 +25,18 @@ import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { TransactionResponseDto } from './dto/transaction-response.dto';
 import { TransactionListResponseDto } from './dto/transaction-list-response.dto';
 import { FindTransactionsDto } from './dto/find-transaction.dto';
+import { AdminAuthGuard } from '../common/guards/jwtAdmin-auth.guard';
+import { RolesGuard } from '../common/guards/jwtRoles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 
 @ApiTags('Transactions')
 @Controller('transactions')
+@ApiBearerAuth()
 export class TransactionController {
   constructor(private readonly transactionService: TransactionService) {}
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Post()
   @ApiOperation({ summary: 'Create a new transaction' })
   @ApiResponse({
@@ -42,6 +50,8 @@ export class TransactionController {
     return this.transactionService.create(createTransactionDto);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Get()
   @ApiOperation({
     summary: 'Get all transactions with filtering and pagination',
@@ -55,6 +65,8 @@ export class TransactionController {
     return this.transactionService.findAll(query);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Get('student/:studentId')
   @ApiOperation({ summary: 'Get all transactions for a specific student' })
   @ApiParam({ name: 'studentId', type: String, description: 'Student ID' })
@@ -67,6 +79,8 @@ export class TransactionController {
     return this.transactionService.getStudentTransactions(studentId);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Get('lesson/:lessonId')
   @ApiOperation({ summary: 'Get all transactions for a specific lesson' })
   @ApiParam({ name: 'lessonId', type: String, description: 'Lesson ID' })
@@ -79,6 +93,8 @@ export class TransactionController {
     return this.transactionService.getLessonTransactions(lessonId);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Get(':id')
   @ApiOperation({ summary: 'Get transaction by ID' })
   @ApiParam({ name: 'id', type: String, description: 'Transaction ID' })
@@ -92,6 +108,8 @@ export class TransactionController {
     return this.transactionService.findOne(id);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Patch(':id')
   @ApiOperation({ summary: 'Update transaction' })
   @ApiParam({ name: 'id', type: String, description: 'Transaction ID' })
@@ -108,6 +126,8 @@ export class TransactionController {
     return this.transactionService.update(id, updateTransactionDto);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel a transaction' })
   @ApiParam({ name: 'id', type: String, description: 'Transaction ID' })
@@ -122,6 +142,8 @@ export class TransactionController {
     return this.transactionService.cancelTransaction(id, reason);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Patch(':id/complete')
   @ApiOperation({ summary: 'Complete a transaction' })
   @ApiParam({ name: 'id', type: String, description: 'Transaction ID' })
@@ -136,6 +158,8 @@ export class TransactionController {
     return this.transactionService.completeTransaction(id);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete transaction' })

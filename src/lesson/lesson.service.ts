@@ -17,12 +17,10 @@ export class LessonService {
       const startTime = new Date(dto.startTime);
       const endTime = new Date(dto.endTime);
 
-      // 1️⃣ vaqt validatsiyasi
       if (startTime >= endTime) {
         throw new BadRequestException('Start time must be before end time');
       }
 
-      // 2️⃣ teacher mavjudligi
       const teacher = await this.prisma.teacher.findUnique({
         where: { id: dto.teacherId },
       });
@@ -30,7 +28,6 @@ export class LessonService {
         throw new NotFoundException('Teacher not found');
       }
 
-      // 3️⃣ student mavjudligi
       const student = await this.prisma.student.findUnique({
         where: { id: dto.studentId },
       });
@@ -38,7 +35,6 @@ export class LessonService {
         throw new NotFoundException('Student not found');
       }
 
-      // 4️⃣ teacher overlap
       const teacherBusy = await this.prisma.lesson.findFirst({
         where: {
           teacherId: dto.teacherId,
@@ -52,7 +48,6 @@ export class LessonService {
         throw new BadRequestException('Teacher is busy at this time');
       }
 
-      // 5️⃣ student overlap
       const studentBusy = await this.prisma.lesson.findFirst({
         where: {
           studentId: dto.studentId,
@@ -68,7 +63,6 @@ export class LessonService {
         );
       }
 
-      // 6️⃣ googleMeetsUrl unique
       const urlExists = await this.prisma.lesson.findUnique({
         where: { googleMeetsUrl: dto.googleMeetsUrl },
       });
@@ -77,7 +71,6 @@ export class LessonService {
         throw new BadRequestException('Google Meets URL already exists');
       }
 
-      // 7️⃣ create
       const lesson = await this.prisma.lesson.create({
         data: {
           name: dto.name,
@@ -189,7 +182,6 @@ export class LessonService {
         ? new Date(dto.endTime)
         : existingLesson.endTime;
 
-      // 1️⃣ vaqt validatsiyasi
       if (startTime >= endTime) {
         throw new BadRequestException('Start time must be before end time');
       }
@@ -197,7 +189,6 @@ export class LessonService {
       const teacherId = dto.teacherId ?? existingLesson.teacherId;
       const studentId = dto.studentId ?? existingLesson.studentId;
 
-      // 2️⃣ teacher overlap (o‘zini hisobga olmasdan)
       const teacherBusy = await this.prisma.lesson.findFirst({
         where: {
           id: { not: id },
@@ -212,7 +203,6 @@ export class LessonService {
         throw new BadRequestException('Teacher is busy at this time');
       }
 
-      // 3️⃣ student overlap
       const studentBusy = await this.prisma.lesson.findFirst({
         where: {
           id: { not: id },
@@ -229,7 +219,6 @@ export class LessonService {
         );
       }
 
-      // 4️⃣ googleMeetsUrl unique (agar o‘zgargan bo‘lsa)
       if (
         dto.googleMeetsUrl &&
         dto.googleMeetsUrl !== existingLesson.googleMeetsUrl
@@ -243,7 +232,6 @@ export class LessonService {
         }
       }
 
-      // 5️⃣ UPDATE
       const updatedLesson = await this.prisma.lesson.update({
         where: { id },
         data: {
@@ -279,8 +267,6 @@ export class LessonService {
         throw new NotFoundException('Lesson not found or already deleted');
       }
 
-      // 🔒 OPTIONAL BUSINESS RULE:
-      // Agar dars boshlangan bo‘lsa o‘chirmaymiz
       if (lesson.startTime <= new Date()) {
         throw new BadRequestException('Started lesson cannot be deleted');
       }

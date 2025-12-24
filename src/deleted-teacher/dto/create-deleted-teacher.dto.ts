@@ -12,7 +12,7 @@ export class CreateDeletedTeacherDto {
 
   @ApiProperty({
     description: 'Username or ID of the person/admin performing the deletion',
-    example: 'admin_user',
+    example: 'uuid of the admin',
     maxLength: 100,
   })
   @IsString()

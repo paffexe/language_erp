@@ -3,9 +3,10 @@ import { TransactionService } from './transaction.service';
 
 import { PrismaModule } from '../prisma/prisma.module';
 import { TransactionController } from './transaction.controller';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, JwtModule],
   controllers: [TransactionController],
   providers: [TransactionService],
   exports: [TransactionService],

@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { LessonHistoryService } from './lesson-history.service';
 import { LessonHistoryController } from './lesson-history.controller';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaModule } from '../prisma/prisma.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
+  imports: [PrismaModule, JwtModule],
   controllers: [LessonHistoryController],
-  providers: [LessonHistoryService, PrismaService],
+  providers: [LessonHistoryService],
 })
 export class LessonHistoryModule {}

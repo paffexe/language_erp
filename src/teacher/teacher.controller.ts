@@ -22,11 +22,11 @@ import {
   ApiBody,
   ApiSecurity,
 } from '@nestjs/swagger';
+import { RolesGuard } from '../common/guards/jwtRoles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { TeacherSelfOrSuperAdminGuard } from '../common/guards/user/jwtTeacherSelf-superAdmin.guard';
 import { TeacherAuthGuard } from '../common/guards/user/jwtUser-auth.guard';
-import { AdminAccessTokenGuard } from '../common/guards/jwtAdmin-accessToken.guard';
-import { IaAdminGuard } from '../common/guards/isAdmin.guard';
-import { AdminRefreshTokenGuard } from '../common/guards/jwtAdmin-refreshToken.guard';
-import { IsSuperAdminGuard } from '../common/guards/jwtAdmin-self.guard';
+import { CombinedAuthGuard } from '../common/guards/both/jwtCombinedAuth.guard';
 
 @ApiTags('teacher')
 @ApiBearerAuth()
@@ -34,6 +34,8 @@ import { IsSuperAdminGuard } from '../common/guards/jwtAdmin-self.guard';
 export class TeacherController {
   constructor(private readonly teacherService: TeacherService) {}
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Post()
   @ApiOperation({ summary: 'Create a new teacher' })
   @ApiResponse({
@@ -49,8 +51,9 @@ export class TeacherController {
     return this.teacherService.create(createTeacherDto);
   }
 
-  /////
-  @UseGuards(AdminAuthGuard, IaAdminGuard)
+  ///////
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Get()
   @ApiOperation({ summary: 'Get all teachers' })
   @ApiResponse({
@@ -70,7 +73,7 @@ export class TeacherController {
     return this.teacherService.findAll();
   }
 
-  @UseGuards(AdminAuthGuard, IsSuperAdminGuard)
+  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
   @Get(':id')
   @ApiOperation({ summary: 'Get a teacher by ID' })
   @ApiParam({
@@ -90,6 +93,7 @@ export class TeacherController {
     return this.teacherService.findOne(id);
   }
 
+  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a teacher' })
   @ApiParam({
@@ -114,6 +118,8 @@ export class TeacherController {
     return this.teacherService.update(id, updateTeacherDto);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a teacher' })
   @ApiParam({
@@ -133,6 +139,7 @@ export class TeacherController {
     return this.teacherService.remove(id);
   }
 
+  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
   @Patch(':id/update-password')
   @ApiOperation({ summary: 'Update teacher password' })
   @ApiParam({

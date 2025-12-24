@@ -24,8 +24,14 @@ import {
   ApiBadRequestResponse,
   ApiNotFoundResponse,
   ApiForbiddenResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
-import { Roles } from 'src/common/decorators/roles.decorator';
+import { TeacherAuthGuard } from '../common/guards/user/jwtUser-auth.guard';
+import { CombinedAuthGuard } from '../common/guards/both/jwtCombinedAuth.guard';
+import { AdminAuthGuard } from '../common/guards/jwtAdmin-auth.guard';
+import { RolesGuard } from '../common/guards/jwtRoles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { TeacherSelfOrSuperAdminGuard } from '../common/guards/user/jwtTeacherSelf-superAdmin.guard';
 
 @ApiTags('Lesson Template')
 @ApiForbiddenResponse({ description: 'Forbidden' })
@@ -33,7 +39,9 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 export class LessonTemplateController {
   constructor(private readonly lessonTemplateService: LessonTemplateService) {}
 
+  @UseGuards(TeacherAuthGuard)
   @Post()
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create lesson template' })
   @ApiCreatedResponse({ description: 'Lesson template created successfully' })
@@ -42,36 +50,36 @@ export class LessonTemplateController {
     return this.lessonTemplateService.create(dto);
   }
 
-@Get()
-@HttpCode(HttpStatus.OK)
-@ApiOperation({ summary: 'Get all lesson templates' })
-@ApiOkResponse({ description: 'Lesson templates retrieved successfully' })
-findAll(
-  @Query('page') page = 1,
-  @Query('limit') limit = 10,
-) {
-  // page va limit raqamlarini integerga o‘tkazamiz
-  const pageNum = Number(page) || 1;
-  const limitNum = Number(limit) || 10;
-  const startIndex = (pageNum - 1) * limitNum;
-  const endIndex = startIndex + limitNum;
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get()
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get all lesson templates' })
+  @ApiOkResponse({ description: 'Lesson templates retrieved successfully' })
+  findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 10;
+    const startIndex = (pageNum - 1) * limitNum;
+    const endIndex = startIndex + limitNum;
 
-  return this.lessonTemplateService.findAll().then((res) => {
-    const paginatedTemplates = res.templates.slice(startIndex, endIndex);
+    return this.lessonTemplateService.findAll().then((res) => {
+      const paginatedTemplates = res.templates.slice(startIndex, endIndex);
 
-    return {
-      statusCode: 200,
-      message: 'Lesson templates retrieved successfully',
-      count: res.count,
-      page: pageNum,
-      limit: limitNum,
-      templates: paginatedTemplates,
-    };
-  });
-}
+      return {
+        statusCode: 200,
+        message: 'Lesson templates retrieved successfully',
+        count: res.count,
+        page: pageNum,
+        limit: limitNum,
+        templates: paginatedTemplates,
+      };
+    });
+  }
 
-
+  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
   @Get(':id')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get lesson template by id' })
   @ApiParam({ name: 'id', type: String })
@@ -80,7 +88,9 @@ findAll(
     return this.lessonTemplateService.findOne(id);
   }
 
+  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
   @Patch(':id')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update lesson template' })
   @ApiBadRequestResponse({ description: 'Validation error' })
@@ -91,7 +101,9 @@ findAll(
     return this.lessonTemplateService.update(id, dto);
   }
 
+  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
   @Delete(':id')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft delete lesson template' })
   @ApiNotFoundResponse({ description: 'Lesson template not found' })

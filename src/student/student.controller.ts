@@ -16,6 +16,7 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { StudentService } from './student.service';
 import { CreateStudentDto } from './dto/create-student.dto';
@@ -29,6 +30,7 @@ export class StudentController {
   constructor(private readonly studentService: StudentService) {}
 
   @Post()
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new student' })
   @ApiResponse({ status: 201, type: StudentResponseDto })
   create(@Body() dto: CreateStudentDto) {
@@ -36,6 +38,7 @@ export class StudentController {
   }
 
   @Get()
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all students with search and pagination' })
   @ApiQuery({ type: StudentQueryDto })
   findAll(@Query() query: StudentQueryDto) {
