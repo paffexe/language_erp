@@ -7,9 +7,10 @@ import { AdminAccessTokenStrategy } from '../common/strategies/admin/admin-acces
 import { AdminRefreshTokenStrategy } from '../common/strategies/admin/admin-refresh-token-strategy';
 import { GoogleStrategy } from '../common/strategies/google.strategy';
 import { SmsService } from '../common/services/sms.service';
+import { TeacherModule } from '../teacher/teacher.module';
 
 @Module({
-  imports: [JwtModule.register({}), PrismaModule],
+  imports: [JwtModule.register({}), PrismaModule, TeacherModule],
   controllers: [AuthController],
   providers: [
     AuthService,

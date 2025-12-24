@@ -8,15 +8,21 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
-import { UpdateAdminProfileDto, UpdateTeacherProfileDto } from './dto/update-profile.dto';
+import {
+  UpdateAdminProfileDto,
+  UpdateTeacherProfileDto,
+} from './dto/update-profile.dto';
 import { Tokens } from '../common/types/tokens.type';
 import { Admin, Teacher } from '../../generated/prisma/client';
 import * as bcrypt from 'bcrypt';
 import { Response } from 'express';
 import { SmsService } from '../common/services/sms.service';
+import { TeacherService } from '../teacher/teacher.service';
 
-
-const otpStore = new Map<string, { otp: string; expiresAt: Date; teacherId: string }>();
+const otpStore = new Map<
+  string,
+  { otp: string; expiresAt: Date; teacherId: string }
+>();
 
 export interface GoogleUser {
   googleId: string;
@@ -33,8 +39,8 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly smsService: SmsService,
-  ) { }
-
+    private readonly teacherService: TeacherService,
+  ) {}
 
   async loginAdmin(dto: LoginDto, res: Response) {
     const admin = await this.prisma.admin.findFirst({
@@ -42,7 +48,7 @@ export class AuthService {
     });
 
     if (!admin) {
-      throw new UnauthorizedException('Username yoki parol noto\'g\'ri');
+      throw new UnauthorizedException("Username yoki parol noto'g'ri");
     }
 
     if (!admin.isActive) {
@@ -51,7 +57,7 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(dto.password, admin.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Username yoki parol noto\'g\'ri');
+      throw new UnauthorizedException("Username yoki parol noto'g'ri");
     }
 
     const tokens = await this.generateAdminTokens(admin);
@@ -63,7 +69,7 @@ export class AuthService {
       id: admin.id,
       role: admin.role,
       accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken
+      refreshToken: tokens.refreshToken,
     };
   }
 
@@ -101,8 +107,6 @@ export class AuthService {
       throw new ForbiddenException('Refresh token yaroqsiz');
     }
   }
-
-
 
   async getAdminProfile(adminId: string) {
     const admin = await this.prisma.admin.findFirst({
@@ -171,7 +175,6 @@ export class AuthService {
     };
   }
 
-
   async loginTeacher(dto: LoginDto, res: Response) {
     const teacher = await this.prisma.teacher.findFirst({
       where: {
@@ -181,16 +184,19 @@ export class AuthService {
     });
 
     if (!teacher) {
-      throw new UnauthorizedException('Email/telefon yoki parol noto\'g\'ri');
+      throw new UnauthorizedException("Email/telefon yoki parol noto'g'ri");
     }
 
     if (!teacher.isActive) {
       throw new ForbiddenException('Akkaunt faol emas');
     }
 
-    const isPasswordValid = await bcrypt.compare(dto.password, teacher.password);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      teacher.password,
+    );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Email/telefon yoki parol noto\'g\'ri');
+      throw new UnauthorizedException("Email/telefon yoki parol noto'g'ri");
     }
 
     const tokens = await this.generateTeacherTokens(teacher);
@@ -238,7 +244,6 @@ export class AuthService {
       throw new ForbiddenException('Refresh token yaroqsiz');
     }
   }
-
 
   async getTeacherProfile(teacherId: string) {
     const teacher = await this.prisma.teacher.findFirst({
@@ -315,7 +320,6 @@ export class AuthService {
     };
   }
 
-
   private async generateAdminTokens(admin: Admin): Promise<Tokens> {
     const payload = {
       id: admin.id,
@@ -358,12 +362,17 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-
-  private setRefreshTokenCookie(res: Response, token: string, type: 'admin' | 'teacher') {
-    const cookieName = type === 'admin' ? 'adminRefreshToken' : 'teacherRefreshToken';
-    const maxAge = type === 'admin'
-      ? Number(process.env.ADMIN_COOKIE_TIME) || 1296000000
-      : Number(process.env.COOKIE_TIME) || 1296000000;
+  private setRefreshTokenCookie(
+    res: Response,
+    token: string,
+    type: 'admin' | 'teacher',
+  ) {
+    const cookieName =
+      type === 'admin' ? 'adminRefreshToken' : 'teacherRefreshToken';
+    const maxAge =
+      type === 'admin'
+        ? Number(process.env.ADMIN_COOKIE_TIME) || 1296000000
+        : Number(process.env.COOKIE_TIME) || 1296000000;
 
     res.cookie(cookieName, token, {
       httpOnly: true,
@@ -372,7 +381,6 @@ export class AuthService {
     });
   }
 
-
   async googleLogin(googleUser: GoogleUser, res: Response) {
     if (!googleUser) {
       throw new BadRequestException('Google autentifikatsiya muvaffaqiyatsiz');
@@ -380,10 +388,7 @@ export class AuthService {
 
     let teacher = await this.prisma.teacher.findFirst({
       where: {
-        OR: [
-          { googleId: googleUser.googleId },
-          { email: googleUser.email },
-        ],
+        OR: [{ googleId: googleUser.googleId }, { email: googleUser.email }],
         isDeleted: false,
       },
     });
@@ -403,8 +408,7 @@ export class AuthService {
         throw new ForbiddenException('Akkaunt faol emas');
       }
     } else {
-      const randomPassword = Math.random().toString(36).slice(-10);
-      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      const hashedPassword = 'temp_hashed_password';
 
       teacher = await this.prisma.teacher.create({
         data: {
@@ -429,13 +433,18 @@ export class AuthService {
       id: teacher.id,
       email: teacher.email,
       fullName: teacher.fullName,
-      isNewUser: !teacher.phoneNumber || teacher.phoneNumber.startsWith('temp_'),
+      isNewUser:
+        !teacher.phoneNumber || teacher.phoneNumber.startsWith('temp_'),
       accessToken: tokens.accessToken,
     };
   }
 
-
-  async sendOtp(phoneNumber: string, teacherId: string) {
+  async sendOtp(
+    phoneNumber: string,
+    teacherId: string,
+    password: string,
+    confirmPassword: string,
+  ) {
     const teacher = await this.prisma.teacher.findFirst({
       where: { id: teacherId, isDeleted: false },
     });
@@ -452,13 +461,30 @@ export class AuthService {
     });
 
     if (existingTeacher) {
-      throw new BadRequestException('Bu telefon raqam allaqachon ro\'yxatdan o\'tgan');
+      throw new BadRequestException(
+        "Bu telefon raqam allaqachon ro'yxatdan o'tgan",
+      );
     }
+
+    if (password !== confirmPassword) {
+      throw new BadRequestException('Parollar mos emas');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 7);
+
+    await this.prisma.teacher.update({
+      where: { id: teacherId },
+      data: { password: hashedPassword },
+    });
+
+    console.log('Password is set', password);
 
     const otp = this.smsService.generateOtp();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 daqiqa
 
     otpStore.set(phoneNumber, { otp, expiresAt, teacherId });
+
+    console.log("this is otp",otp);
 
     const sent = await this.smsService.sendOtp(phoneNumber, otp);
 
@@ -469,7 +495,7 @@ export class AuthService {
     return {
       message: 'OTP kod yuborildi',
       phoneNumber,
-      expiresIn: 300, 
+      expiresIn: 300,
     };
   }
 
@@ -486,7 +512,7 @@ export class AuthService {
     }
 
     if (stored.otp !== otp) {
-      throw new BadRequestException('OTP noto\'g\'ri');
+      throw new BadRequestException("OTP noto'g'ri");
     }
 
     const teacher = await this.prisma.teacher.update({
@@ -512,6 +538,6 @@ export class AuthService {
   async resendOtp(phoneNumber: string, teacherId: string) {
     otpStore.delete(phoneNumber);
 
-    return this.sendOtp(phoneNumber, teacherId);
+    return this.sendOtp(phoneNumber, teacherId, '', '');
   }
 }
