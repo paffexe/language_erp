@@ -3,10 +3,10 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../prisma/prisma.module';
-import { AccessTokenStrategy } from '../common/strategies/access-token-strategy';
-// import { RefreshTokenCookieStrategy } from '../common/strategies/refresh-token-strategy';
 import { AdminAccessTokenStrategy } from '../common/strategies/admin/admin-access-token-strategy';
 import { AdminRefreshTokenStrategy } from '../common/strategies/admin/admin-refresh-token-strategy';
+import { GoogleStrategy } from '../common/strategies/google.strategy';
+import { SmsService } from '../common/services/sms.service';
 
 @Module({
   imports: [JwtModule.register({}), PrismaModule],
@@ -14,9 +14,10 @@ import { AdminRefreshTokenStrategy } from '../common/strategies/admin/admin-refr
   providers: [
     AuthService,
     AdminAccessTokenStrategy,
-    AdminRefreshTokenStrategy
-    // RefreshTokenCookieStrategy,
+    AdminRefreshTokenStrategy,
+    GoogleStrategy,
+    SmsService,
   ],
   exports: [AuthService, JwtModule],
 })
-export class AuthModule {}
+export class AuthModule { }

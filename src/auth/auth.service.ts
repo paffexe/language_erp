@@ -13,12 +13,26 @@ import { Tokens } from '../common/types/tokens.type';
 import { Admin, Teacher } from '../../generated/prisma/client';
 import * as bcrypt from 'bcrypt';
 import { Response } from 'express';
+import { SmsService } from '../common/services/sms.service';
+
+
+const otpStore = new Map<string, { otp: string; expiresAt: Date; teacherId: string }>();
+
+export interface GoogleUser {
+  googleId: string;
+  email: string;
+  fullName: string;
+  imageUrl?: string;
+  googleAccessToken?: string;
+  googleRefreshToken?: string;
+}
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly smsService: SmsService,
   ) { }
 
 
@@ -356,5 +370,148 @@ export class AuthService {
       maxAge,
       sameSite: 'strict',
     });
+  }
+
+
+  async googleLogin(googleUser: GoogleUser, res: Response) {
+    if (!googleUser) {
+      throw new BadRequestException('Google autentifikatsiya muvaffaqiyatsiz');
+    }
+
+    let teacher = await this.prisma.teacher.findFirst({
+      where: {
+        OR: [
+          { googleId: googleUser.googleId },
+          { email: googleUser.email },
+        ],
+        isDeleted: false,
+      },
+    });
+
+    if (teacher) {
+      teacher = await this.prisma.teacher.update({
+        where: { id: teacher.id },
+        data: {
+          googleId: googleUser.googleId,
+          googleAccessToken: googleUser.googleAccessToken,
+          googleRefreshToken: googleUser.googleRefreshToken,
+          imageUrl: googleUser.imageUrl || teacher.imageUrl,
+        },
+      });
+
+      if (!teacher.isActive) {
+        throw new ForbiddenException('Akkaunt faol emas');
+      }
+    } else {
+      const randomPassword = Math.random().toString(36).slice(-10);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      teacher = await this.prisma.teacher.create({
+        data: {
+          googleId: googleUser.googleId,
+          email: googleUser.email,
+          fullName: googleUser.fullName,
+          imageUrl: googleUser.imageUrl,
+          googleAccessToken: googleUser.googleAccessToken,
+          googleRefreshToken: googleUser.googleRefreshToken,
+          password: hashedPassword,
+          phoneNumber: `temp_${googleUser.googleId}`,
+          cardNumber: `card_${googleUser.googleId}`,
+        },
+      });
+    }
+
+    const tokens = await this.generateTeacherTokens(teacher);
+    this.setRefreshTokenCookie(res, tokens.refreshToken, 'teacher');
+
+    return {
+      message: 'Google orqali muvaffaqiyatli kirdingiz',
+      id: teacher.id,
+      email: teacher.email,
+      fullName: teacher.fullName,
+      isNewUser: !teacher.phoneNumber || teacher.phoneNumber.startsWith('temp_'),
+      accessToken: tokens.accessToken,
+    };
+  }
+
+
+  async sendOtp(phoneNumber: string, teacherId: string) {
+    const teacher = await this.prisma.teacher.findFirst({
+      where: { id: teacherId, isDeleted: false },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher topilmadi');
+    }
+    const existingTeacher = await this.prisma.teacher.findFirst({
+      where: {
+        phoneNumber: phoneNumber,
+        id: { not: teacherId },
+        isDeleted: false,
+      },
+    });
+
+    if (existingTeacher) {
+      throw new BadRequestException('Bu telefon raqam allaqachon ro\'yxatdan o\'tgan');
+    }
+
+    const otp = this.smsService.generateOtp();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 daqiqa
+
+    otpStore.set(phoneNumber, { otp, expiresAt, teacherId });
+
+    const sent = await this.smsService.sendOtp(phoneNumber, otp);
+
+    if (!sent) {
+      throw new BadRequestException('SMS yuborishda xatolik yuz berdi');
+    }
+
+    return {
+      message: 'OTP kod yuborildi',
+      phoneNumber,
+      expiresIn: 300, 
+    };
+  }
+
+  async verifyOtp(phoneNumber: string, otp: string, res: Response) {
+    const stored = otpStore.get(phoneNumber);
+
+    if (!stored) {
+      throw new BadRequestException('OTP topilmadi yoki muddati tugagan');
+    }
+
+    if (new Date() > stored.expiresAt) {
+      otpStore.delete(phoneNumber);
+      throw new BadRequestException('OTP muddati tugagan');
+    }
+
+    if (stored.otp !== otp) {
+      throw new BadRequestException('OTP noto\'g\'ri');
+    }
+
+    const teacher = await this.prisma.teacher.update({
+      where: { id: stored.teacherId },
+      data: { phoneNumber },
+    });
+
+    otpStore.delete(phoneNumber);
+
+    const tokens = await this.generateTeacherTokens(teacher);
+    this.setRefreshTokenCookie(res, tokens.refreshToken, 'teacher');
+
+    return {
+      message: 'Telefon raqam muvaffaqiyatli tasdiqlandi',
+      id: teacher.id,
+      email: teacher.email,
+      fullName: teacher.fullName,
+      phoneNumber: teacher.phoneNumber,
+      accessToken: tokens.accessToken,
+    };
+  }
+
+  async resendOtp(phoneNumber: string, teacherId: string) {
+    otpStore.delete(phoneNumber);
+
+    return this.sendOtp(phoneNumber, teacherId);
   }
 }

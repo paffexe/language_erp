@@ -16,10 +16,12 @@ import {
   ApiResponse,
   ApiBody,
   ApiBearerAuth,
+  ApiExcludeEndpoint,
 } from '@nestjs/swagger';
 import { Response, Request } from 'express';
-import { AuthService } from './auth.service';
+import { AuthService, GoogleUser } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { SendOtpDto, VerifyOtpDto } from './dto/otp.dto';
 import {
   UpdateAdminProfileDto,
   UpdateTeacherProfileDto,
@@ -34,11 +36,13 @@ import { AdminRefreshTokenGuard } from '../common/guards/jwtAdmin-refreshToken.g
 import { UserRefreshTokenGuard } from '../common/guards/user/jwtUser-refreshToken.guard';
 import { CombinedAuthGuard } from '../common/guards/both/jwtCombinedAuth.guard';
 import { AdminSelfOrSuperAdminGuard } from '../common/guards/jwtAdminSelf-superAdmin.guard';
+import { GoogleAuthGuard } from '../common/guards/google-auth.guard';
+import { TeacherAuthGuard } from '../common/guards/teacher-auth.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('admin/login')
   @HttpCode(HttpStatus.OK)
@@ -172,7 +176,7 @@ export class AuthController {
 
   @UseGuards(CombinedAuthGuard)
   @Get('teacher/me')
-  @UseGuards(AdminAuthGuard)
+  @UseGuards(TeacherAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current teacher profile' })
   @ApiResponse({ status: 200, description: 'Teacher profile' })
@@ -184,7 +188,7 @@ export class AuthController {
 
   @UseGuards(CombinedAuthGuard)
   @Patch('teacher/me')
-  @UseGuards(AdminAuthGuard)
+  @UseGuards(TeacherAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update current teacher profile' })
   @ApiBody({ type: UpdateTeacherProfileDto })
@@ -196,5 +200,71 @@ export class AuthController {
   ) {
     const user = req.user as { id: string };
     return this.authService.updateTeacherProfile(user.id, dto);
+  }
+
+  // ==================== GOOGLE OAUTH ====================
+
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google OAuth login - redirects to Google' })
+  @ApiResponse({ status: 302, description: 'Redirects to Google OAuth' })
+  async googleAuth() {
+    // Guard handles redirect to Google
+  }
+
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  @ApiExcludeEndpoint()
+  async googleCallback(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.googleLogin(
+      req.user as GoogleUser,
+      res,
+    );
+
+    return result;
+  }
+
+
+  @Post('teacher/send-otp')
+  @UseGuards(TeacherAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Telefon raqamga OTP yuborish' })
+  @ApiBody({ type: SendOtpDto })
+  @ApiResponse({ status: 200, description: 'OTP yuborildi' })
+  @ApiResponse({ status: 400, description: 'Telefon raqam allaqachon mavjud' })
+  async sendOtp(@Req() req: Request, @Body() dto: SendOtpDto) {
+    const user = req.user as { id: string };
+    return this.authService.sendOtp(dto.phoneNumber, user.id);
+  }
+
+  @Post('teacher/verify-otp')
+  @UseGuards(TeacherAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'OTP kodni tasdiqlash' })
+  @ApiBody({ type: VerifyOtpDto })
+  @ApiResponse({ status: 200, description: 'Telefon raqam tasdiqlandi' })
+  @ApiResponse({ status: 400, description: 'OTP noto\'g\'ri yoki muddati tugagan' })
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.authService.verifyOtp(dto.phoneNumber, dto.otp, res);
+  }
+
+  @Post('teacher/resend-otp')
+  @UseGuards(TeacherAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'OTP kodni qayta yuborish' })
+  @ApiBody({ type: SendOtpDto })
+  @ApiResponse({ status: 200, description: 'OTP qayta yuborildi' })
+  async resendOtp(@Req() req: Request, @Body() dto: SendOtpDto) {
+    const user = req.user as { id: string };
+    return this.authService.resendOtp(dto.phoneNumber, user.id);
   }
 }
