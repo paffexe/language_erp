@@ -1,4 +1,4 @@
-import { Update, Start, Ctx, Help } from 'nestjs-telegraf';
+import { Update, Start, Ctx, Help, Command } from 'nestjs-telegraf';
 import { Context } from 'telegraf';
 import { BotService } from './bot.service';
 
@@ -56,5 +56,44 @@ bosing yoki quyidagi buyruqlardan foydalaning:
 
 📞 Muammo bo'lsa, admin bilan bog'laning.`,
     );
+  }
+
+  @Command('lessons')
+  async onLessons(@Ctx() ctx: Context) {
+    try {
+      await ctx.reply('Sizning darslaringizni yuklayapman... ⏳');
+
+      const lessons = await this.botService.getStudentLessons(ctx.from?.id!);
+
+      if (!lessons.lessons.length) {
+        await ctx.replyWithHTML("📚 Sizda hali darslar yo'q.");
+        return;
+      }
+
+      const formatDateTime = (isoDate: Date) => {
+        return new Date(isoDate).toLocaleString('uz-UZ', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      };
+
+      const message = `📚 <b>Mening darslarim:</b>\n\n${lessons.lessons
+        .map((item, index) => {
+          return `${index + 1}. <b>Dars nomi: \t${item.name}</b>
+📅 Boshlanish vaqti:\t ${formatDateTime(item.startTime)}
+📅 Tugash vaqti:\t ${formatDateTime(item.endTime)}
+🔗 Link: ${item.googleMeetsUrl}
+───────────────`;
+        })
+        .join('\n\n')}`;
+
+      await ctx.replyWithHTML(message);
+    } catch (error) {
+      console.log(error);
+      await ctx.reply('❌ Xatolik yuz berdi.');
+    }
   }
 }

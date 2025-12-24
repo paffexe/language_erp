@@ -252,7 +252,7 @@ export class LessonService {
       ) {
         throw error;
       }
-      console.log(error)
+      console.log(error);
       throw new BadRequestException('Lesson update failed');
     }
   }
@@ -293,5 +293,22 @@ export class LessonService {
 
       throw new BadRequestException('Lesson deletion failed');
     }
+  }
+
+  async findAllbyStudent(studentId: string) {
+    const lessons = await this.prisma.lesson.findMany({
+      where: { studentId, isDeleted: false },
+      include: {
+        teacher: true,
+      },
+    });
+
+    if (!lessons.length) {
+      throw new NotFoundException('No lessons found for this student');
+    }
+    return {
+      message: 'Lessons retrieved successfully',
+      lessons,
+    };
   }
 }

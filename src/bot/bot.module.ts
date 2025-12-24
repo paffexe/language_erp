@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { BotService } from './bot.service';
 import { BotUpdate } from './bot.update';
-import { PrismaService } from '../prisma/prisma.service';
 import { RegistrationScene } from './bot.scene';
+import { LessonModule } from '../lesson/lesson.module';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [],
+  imports: [LessonModule, PrismaModule],
   controllers: [],
-  providers: [BotService, BotUpdate, PrismaService, RegistrationScene],
+  providers: [BotService, BotUpdate, RegistrationScene],
 })
 export class BotModule {}

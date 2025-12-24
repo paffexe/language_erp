@@ -7,10 +7,14 @@ import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { StudentQueryDto } from './dto/student-query.dto';
+import { LessonService } from '../lesson/lesson.service';
 
 @Injectable()
 export class StudentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly lessonService: LessonService,
+  ) {}
   async create(createStudentDto: CreateStudentDto) {
     try {
       return await this.prisma.student.create({
@@ -106,5 +110,16 @@ export class StudentService {
       where: { id },
       data: { isBlocked: false, blockedAt: null, blockedReason: null },
     });
+  }
+
+  async findLessons(id: string) {
+    const Mylessons = await this.lessonService.findAllbyStudent(id);
+    if (!Mylessons) {
+      throw new NotFoundException('No lessons found for this student');
+    }
+    return {
+      message: 'Lessons retrieved successfully',
+      lessons: Mylessons,
+    };
   }
 }
