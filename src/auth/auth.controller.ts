@@ -211,16 +211,9 @@ export class AuthController {
       res,
     );
 
-    // Frontend mavjud bo'lsa redirect qilish:
-    // const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    // const redirectUrl = `${frontendUrl}/auth/callback?token=${result.accessToken}&isNewUser=${result.isNewUser}`;
-    // return res.redirect(redirectUrl);
-
-    // Hozircha JSON qaytarish (test uchun)
     return result;
   }
 
-  // ==================== OTP VERIFICATION ====================
 
   @Post('teacher/send-otp')
   @UseGuards(TeacherAuthGuard)

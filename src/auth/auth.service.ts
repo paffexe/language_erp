@@ -15,7 +15,7 @@ import * as bcrypt from 'bcrypt';
 import { Response } from 'express';
 import { SmsService } from '../common/services/sms.service';
 
-// OTP saqlash uchun in-memory store (production uchun Redis tavsiya etiladi)
+
 const otpStore = new Map<string, { otp: string; expiresAt: Date; teacherId: string }>();
 
 export interface GoogleUser {
@@ -372,14 +372,12 @@ export class AuthService {
     });
   }
 
-  // ==================== GOOGLE OAUTH ====================
 
   async googleLogin(googleUser: GoogleUser, res: Response) {
     if (!googleUser) {
       throw new BadRequestException('Google autentifikatsiya muvaffaqiyatsiz');
     }
 
-    // Teacher mavjudligini tekshirish
     let teacher = await this.prisma.teacher.findFirst({
       where: {
         OR: [
@@ -391,7 +389,6 @@ export class AuthService {
     });
 
     if (teacher) {
-      // Mavjud teacher - Google tokenlarni yangilash
       teacher = await this.prisma.teacher.update({
         where: { id: teacher.id },
         data: {
@@ -406,7 +403,6 @@ export class AuthService {
         throw new ForbiddenException('Akkaunt faol emas');
       }
     } else {
-      // Yangi teacher yaratish
       const randomPassword = Math.random().toString(36).slice(-10);
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
@@ -438,10 +434,8 @@ export class AuthService {
     };
   }
 
-  // ==================== OTP VERIFICATION ====================
 
   async sendOtp(phoneNumber: string, teacherId: string) {
-    // Teacher mavjudligini tekshirish
     const teacher = await this.prisma.teacher.findFirst({
       where: { id: teacherId, isDeleted: false },
     });
@@ -449,8 +443,6 @@ export class AuthService {
     if (!teacher) {
       throw new NotFoundException('Teacher topilmadi');
     }
-
-    // Telefon raqam boshqa teacherga tegishli emasligini tekshirish
     const existingTeacher = await this.prisma.teacher.findFirst({
       where: {
         phoneNumber: phoneNumber,
@@ -463,14 +455,11 @@ export class AuthService {
       throw new BadRequestException('Bu telefon raqam allaqachon ro\'yxatdan o\'tgan');
     }
 
-    // OTP generatsiya qilish
     const otp = this.smsService.generateOtp();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 daqiqa
 
-    // OTP ni saqlash
     otpStore.set(phoneNumber, { otp, expiresAt, teacherId });
 
-    // SMS yuborish
     const sent = await this.smsService.sendOtp(phoneNumber, otp);
 
     if (!sent) {
@@ -480,7 +469,7 @@ export class AuthService {
     return {
       message: 'OTP kod yuborildi',
       phoneNumber,
-      expiresIn: 300, // 5 daqiqa (sekundlarda)
+      expiresIn: 300, 
     };
   }
 
@@ -500,16 +489,13 @@ export class AuthService {
       throw new BadRequestException('OTP noto\'g\'ri');
     }
 
-    // OTP to'g'ri - telefon raqamni yangilash
     const teacher = await this.prisma.teacher.update({
       where: { id: stored.teacherId },
       data: { phoneNumber },
     });
 
-    // OTP ni o'chirish
     otpStore.delete(phoneNumber);
 
-    // Tokenlarni generatsiya qilish
     const tokens = await this.generateTeacherTokens(teacher);
     this.setRefreshTokenCookie(res, tokens.refreshToken, 'teacher');
 
@@ -524,10 +510,8 @@ export class AuthService {
   }
 
   async resendOtp(phoneNumber: string, teacherId: string) {
-    // Mavjud OTP ni o'chirish
     otpStore.delete(phoneNumber);
 
-    // Yangi OTP yuborish
     return this.sendOtp(phoneNumber, teacherId);
   }
 }

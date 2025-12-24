@@ -14,7 +14,7 @@ import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { BOT_NAME } from './app.constants';
-// import { BotModule } from './bot/bot.module';
+import { BotModule } from './bot/bot.module';
 import { Context } from 'telegraf';
 
 const LocalSession = require('telegraf-session-local');
@@ -41,15 +41,15 @@ const sessions = new LocalSession({
     DeletedTeacherModule,
     AdminModule,
     AuthModule,
-    // TelegrafModule.forRootAsync({
-    //   botName: BOT_NAME,
-    //   useFactory: () => ({
-    //     // token: process.env.BOT_TOKEN!,
-    //     // include: [BotModule],
-    //     middlewares: [sessions.middleware()],
-    //   }),
-    // }),
-    // BotModule,
+    TelegrafModule.forRootAsync({
+      botName: BOT_NAME,
+      useFactory: () => ({
+        token: process.env.BOT_TOKEN!,
+        include: [BotModule],
+        middlewares: [sessions.middleware()],
+      }),
+    }),
+    BotModule,
   ],
   controllers: [],
   providers: [],
