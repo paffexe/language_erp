@@ -8,5 +8,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule, JwtModule],
   controllers: [LessonController],
   providers: [LessonService],
+  exports: [LessonService],
 })
 export class LessonModule {}

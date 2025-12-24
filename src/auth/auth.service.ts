@@ -193,8 +193,12 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(
       dto.password,
-      teacher.password,
+      teacher.password.trim(),
     );
+
+    console.log('Dto password', dto.password);
+    console.log('teacher password', teacher.password);
+
     if (!isPasswordValid) {
       throw new UnauthorizedException("Email/telefon yoki parol noto'g'ri");
     }
@@ -436,6 +440,7 @@ export class AuthService {
       isNewUser:
         !teacher.phoneNumber || teacher.phoneNumber.startsWith('temp_'),
       accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     };
   }
 
@@ -477,14 +482,12 @@ export class AuthService {
       data: { password: hashedPassword },
     });
 
-    console.log('Password is set', password);
-
     const otp = this.smsService.generateOtp();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 daqiqa
 
     otpStore.set(phoneNumber, { otp, expiresAt, teacherId });
 
-    console.log("this is otp",otp);
+    console.log('this is otp', otp);
 
     const sent = await this.smsService.sendOtp(phoneNumber, otp);
 

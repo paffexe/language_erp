@@ -10,8 +10,20 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientID: configService.get<string>('GOOGLE_CLIENT_ID')!,
       clientSecret: configService.get<string>('GOOGLE_SECRET')!,
       callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL')!,
-      scope: ['email', 'profile'],
+      scope: [
+        'email',
+        'profile',
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/calendar.events',
+      ],
     });
+  }
+
+  authorizationParams(): { [key: string]: string } {
+    return {
+      access_type: 'offline', // Critical for Meet links
+      prompt: 'consent', // Ensures you get the refresh token every time during testing
+    };
   }
 
   async validate(

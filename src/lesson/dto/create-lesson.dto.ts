@@ -30,9 +30,8 @@ export class CreateLessonDto {
   @IsUUID()
   studentId: string;
 
-  @ApiProperty()
-  @IsString()
-  googleMeetsUrl: string;
+  @IsOptional()
+  googleMeetsUrl?: string;
 
   @ApiProperty({ example: 100 })
   @IsNumber()
