@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLessonHistoryDto } from './dto/create-lesson-history.dto';
 import { UpdateLessonHistoryDto } from './dto/update-lesson-history.dto';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class LessonHistoryService {
@@ -14,6 +15,38 @@ export class LessonHistoryService {
 
   async create(dto: CreateLessonHistoryDto) {
     try {
+      // 1. Verify the lesson exists and hasn't been deleted
+      const lesson = await this.prisma.lesson.findUnique({
+        where: { id: dto.lessonId },
+      });
+
+      if (!lesson || lesson.isDeleted) {
+        throw new NotFoundException('Lesson not found or has been deleted');
+      }
+
+      // 2. Check if lesson has actually ended
+      const now = new Date();
+      if (lesson.endTime > now) {
+        throw new BadRequestException(
+          "Cannot create history for a lesson that hasn't ended yet",
+        );
+      }
+
+      // 3. Verify teacher matches the lesson
+      if (lesson.teacherId !== dto.teacherId) {
+        throw new BadRequestException(
+          "Teacher ID does not match the lesson's assigned teacher",
+        );
+      }
+
+      // 4. Verify student matches the lesson
+      if (lesson.studentId !== dto.studentId) {
+        throw new BadRequestException(
+          "Student ID does not match the lesson's assigned student",
+        );
+      }
+
+      // 5. Check if teacher exists and is active
       const teacher = await this.prisma.teacher.findUnique({
         where: { id: dto.teacherId },
       });
@@ -21,6 +54,7 @@ export class LessonHistoryService {
         throw new NotFoundException('Teacher not found or inactive');
       }
 
+      // 6. Check if student exists and is active
       const student = await this.prisma.student.findUnique({
         where: { id: dto.studentId },
       });
@@ -28,16 +62,7 @@ export class LessonHistoryService {
         throw new NotFoundException('Student not found or inactive');
       }
 
-      const lesson = await this.prisma.lessonHistory.findFirst({
-        where: {
-          lessonId: dto.lessonId,
-        },
-      });
-
-      if (!lesson) {
-        throw new NotFoundException("Lesson doesn't exsist");
-      }
-
+      // 7. Check if history already exists for this lesson
       const existingHistory = await this.prisma.lessonHistory.findFirst({
         where: {
           lessonId: dto.lessonId,
@@ -47,10 +72,21 @@ export class LessonHistoryService {
 
       if (existingHistory) {
         throw new BadRequestException(
-          "Lesson history can'be created because it's already exsists for this lesson",
+          'Lesson history already exists for this lesson',
         );
       }
 
+      // 8. Validate star rating
+      if (dto.star < 1 || dto.star > 5) {
+        throw new BadRequestException('Star rating must be between 1 and 5');
+      }
+
+      // 9. Validate feedback length (optional but recommended)
+      if (dto.feedback && dto.feedback.length > 1000) {
+        throw new BadRequestException('Feedback cannot exceed 1000 characters');
+      }
+
+      // 10. Create the lesson history
       const history = await this.prisma.lessonHistory.create({
         data: {
           lessonId: dto.lessonId,
@@ -58,6 +94,29 @@ export class LessonHistoryService {
           feedback: dto.feedback,
           teacherId: dto.teacherId,
           studentId: dto.studentId,
+        },
+        include: {
+          lesson: {
+            select: {
+              id: true,
+              name: true,
+              startTime: true,
+              endTime: true,
+            },
+          },
+          teacher: {
+            select: {
+              id: true,
+              fullName: true,
+            },
+          },
+          student: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
         },
       });
 
@@ -74,6 +133,7 @@ export class LessonHistoryService {
         throw error;
       }
 
+      console.error('Error creating lesson history:', error);
       throw new InternalServerErrorException('Lesson history creation failed');
     }
   }
@@ -285,5 +345,41 @@ export class LessonHistoryService {
       message: 'Histrory retrieved successfully',
       lessons,
     };
+  }
+
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async autoCreateHistoryForCompletedLessons() {
+    const now = new Date();
+
+    const completedLessons = await this.prisma.lesson.findMany({
+      where: {
+        endTime: { lte: now },
+        isDeleted: false,
+        lessonHistories: {
+          none: { isDeleted: false },
+        },
+      },
+    });
+
+    console.log(
+      `[CRON] Found ${completedLessons.length} lessons without history`,
+    );
+
+    for (const lesson of completedLessons) {
+      try {
+        await this.prisma.lessonHistory.create({
+          data: {
+            lessonId: lesson.id,
+            teacherId: lesson.teacherId,
+            studentId: lesson.studentId,
+            star: 0, // Default - teacher can update later
+            feedback: 'Automatically created by system',
+          },
+        });
+        console.log(`[CRON] Created history for lesson ${lesson.id}`);
+      } catch (error) {
+        console.error(`[CRON] Failed for lesson ${lesson.id}:`, error);
+      }
+    }
   }
 }

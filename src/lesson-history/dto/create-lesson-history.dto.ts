@@ -7,6 +7,7 @@ import {
   Max,
   IsOptional,
   IsString,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateLessonHistoryDto {
@@ -22,6 +23,8 @@ export class CreateLessonHistoryDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsString({ message: 'Feedback must be a string' })
+  @MaxLength(1000, { message: 'Feedback cannot exceed 1000 characters' })
   @IsString()
   feedback?: string;
 
