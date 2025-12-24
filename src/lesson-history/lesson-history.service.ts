@@ -28,18 +28,26 @@ export class LessonHistoryService {
         throw new NotFoundException('Student not found or inactive');
       }
 
+      const lesson = await this.prisma.lessonHistory.findFirst({
+        where: {
+          lessonId: dto.lessonId,
+        },
+      });
+
+      if (!lesson) {
+        throw new NotFoundException("Lesson doesn't exsist");
+      }
+
       const existingHistory = await this.prisma.lessonHistory.findFirst({
         where: {
           lessonId: dto.lessonId,
-          teacherId: dto.teacherId,
-          studentId: dto.studentId,
           isDeleted: false,
         },
       });
 
       if (existingHistory) {
         throw new BadRequestException(
-          'Lesson history already exists for this teacher and student',
+          "Lesson history can'be created because it's already exsists for this lesson",
         );
       }
 
@@ -255,5 +263,27 @@ export class LessonHistoryService {
       console.error(`Error deleting lesson history with id ${id}:`, error);
       throw new InternalServerErrorException('Lesson history deletion failed');
     }
+  }
+
+  async getLessonsHistoryByStId(id: string) {
+    const lessons = await this.prisma.lessonHistory.findMany({
+      where: {
+        studentId: id,
+        isDeleted: false,
+      },
+      include: {
+        teacher: true,
+        lesson: true,
+      },
+    });
+
+    if (!lessons.length) {
+      throw new NotFoundException('No lessons found for this student');
+    }
+
+    return {
+      message: 'Histrory retrieved successfully',
+      lessons,
+    };
   }
 }

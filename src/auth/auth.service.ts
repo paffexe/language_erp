@@ -440,6 +440,7 @@ export class AuthService {
       isNewUser:
         !teacher.phoneNumber || teacher.phoneNumber.startsWith('temp_'),
       accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     };
   }
 
@@ -480,8 +481,6 @@ export class AuthService {
       where: { id: teacherId },
       data: { password: hashedPassword },
     });
-
-    console.log('Password is set', password);
 
     const otp = this.smsService.generateOtp();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 daqiqa
