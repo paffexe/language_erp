@@ -412,7 +412,8 @@ export class AuthService {
         throw new ForbiddenException('Akkaunt faol emas');
       }
     } else {
-      const hashedPassword = 'temp_hashed_password';
+      const tempPassword = 'temp_hashed_password';
+      const random_card = Math.floor(10000 + Math.random() * 90000).toString();
 
       teacher = await this.prisma.teacher.create({
         data: {
@@ -422,12 +423,14 @@ export class AuthService {
           imageUrl: googleUser.imageUrl,
           googleAccessToken: googleUser.googleAccessToken,
           googleRefreshToken: googleUser.googleRefreshToken,
-          password: hashedPassword,
+          password: tempPassword,
           phoneNumber: `temp_${googleUser.googleId}`,
-          cardNumber: `card_${googleUser.googleId}`,
+          cardNumber: `card_${random_card}`,
         },
       });
     }
+
+    console.log('Temp password has been applied');
 
     const tokens = await this.generateTeacherTokens(teacher);
     this.setRefreshTokenCookie(res, tokens.refreshToken, 'teacher');
@@ -475,12 +478,16 @@ export class AuthService {
       throw new BadRequestException('Parollar mos emas');
     }
 
+    console.log('this is user input passowrd', confirmPassword);
+
     const hashedPassword = await bcrypt.hash(password, 7);
 
     await this.prisma.teacher.update({
       where: { id: teacherId },
       data: { password: hashedPassword },
     });
+
+    console.log('password is hashed');
 
     const otp = this.smsService.generateOtp();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 daqiqa

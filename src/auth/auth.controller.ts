@@ -246,8 +246,8 @@ export class AuthController {
   }
 
   @Post('teacher/verify-otp')
-  // @UseGuards(TeacherAuthGuard)
-  // @ApiBearerAuth()
+  @UseGuards(TeacherAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'OTP kodni tasdiqlash' })
   @ApiBody({ type: VerifyOtpDto })
@@ -264,8 +264,8 @@ export class AuthController {
   }
 
   @Post('teacher/resend-otp')
-  // @UseGuards(TeacherAuthGuard)
-  // @ApiBearerAuth()
+  @UseGuards(TeacherAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'OTP kodni qayta yuborish' })
   @ApiBody({ type: SendOtpDto })

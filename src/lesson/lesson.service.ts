@@ -71,6 +71,21 @@ export class LessonService {
       // date time logic check start
       const startTime = new Date(dto.startTime);
       const endTime = new Date(dto.endTime);
+      const now = new Date();
+
+      // 2. Check if start time is in the past
+      if (startTime.getTime() <= now.getTime()) {
+        throw new BadRequestException(
+          `Start time must be in the future. Current time: ${now.toISOString()}, Your start time: ${startTime.toISOString()}`,
+        );
+      }
+
+      // 3. Check if end datetime is in the past
+      if (endTime.getTime() <= now.getTime()) {
+        throw new BadRequestException(
+          `End time must be in the future. Current time: ${now.toISOString()}, Your end time: ${endTime.toISOString()}`,
+        );
+      }
 
       if (startTime >= endTime) {
         throw new BadRequestException('Start time must be before end time');
@@ -378,6 +393,7 @@ export class LessonService {
 
   async remove(id: string) {
     try {
+      
       const lesson = await this.prisma.lesson.findFirst({
         where: { id, isDeleted: false },
       });
@@ -425,6 +441,22 @@ export class LessonService {
     if (!lessons.length) {
       throw new NotFoundException('No lessons found for this student');
     }
+    return {
+      message: 'Lessons retrieved successfully',
+      lessons,
+    };
+  }
+
+  async findAllbyTeacher(teacherId: string) {
+    const lessons = await this.prisma.lesson.findMany({
+      where: { teacherId, isDeleted: false },
+      include: { student: true },
+    });
+
+    if (!lessons.length) {
+      throw new NotFoundException('No lessons found for this teacher');
+    }
+
     return {
       message: 'Lessons retrieved successfully',
       lessons,

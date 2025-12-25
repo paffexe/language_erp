@@ -29,6 +29,7 @@ import {
 import { CombinedAuthGuard } from '../common/guards/both/jwtCombinedAuth.guard';
 import { TeacherAuthGuard } from '../common/guards/user/jwtUser-auth.guard';
 import { TeacherSelfOrSuperAdminGuard } from '../common/guards/user/jwtTeacherSelf-superAdmin.guard';
+import { TeacherLessonOwnerGuard } from '../common/guards/user/jwtTeacher-ownlessons.guard';
 
 @ApiTags('Lesson')
 @ApiForbiddenResponse({ description: 'Forbidden' })
@@ -91,12 +92,21 @@ export class LessonController {
     return this.lessonService.update(id, dto);
   }
 
-  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
+  @UseGuards(CombinedAuthGuard, TeacherLessonOwnerGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete lesson (soft delete)' })
   @ApiNotFoundResponse({ description: 'Lesson not found' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.lessonService.remove(id);
+  }
+  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
+  @Get(':id/teacher')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get lessons by id for teacher' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNotFoundResponse({ description: 'Lesson not found' })
+  findAllbyTeacher(@Param('id', ParseUUIDPipe) id: string) {
+    return this.lessonService.findAllbyTeacher(id);
   }
 }

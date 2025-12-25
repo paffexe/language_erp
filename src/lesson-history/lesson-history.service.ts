@@ -338,7 +338,10 @@ export class LessonHistoryService {
     });
 
     if (!lessons.length) {
-      throw new NotFoundException('No lessons found for this student');
+      return {
+        message: "No lesson histroies so far",
+        lessons
+      }
     }
 
     return {
