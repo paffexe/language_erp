@@ -13,6 +13,7 @@ async function start() {
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
+  app.enableCors();
 
   app.useGlobalFilters(new AllExceptionFilter());
 
