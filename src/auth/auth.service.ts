@@ -272,7 +272,6 @@ export class AuthService {
         lessons: {
           select: {
             id: true,
-            completedAt: true,
             status: true,
           },
         },

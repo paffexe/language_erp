@@ -7,6 +7,9 @@ import {
   Param,
   Delete,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { TeacherService } from './teacher.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
@@ -27,6 +30,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { TeacherSelfOrSuperAdminGuard } from '../common/guards/user/jwtTeacherSelf-superAdmin.guard';
 import { TeacherAuthGuard } from '../common/guards/user/jwtUser-auth.guard';
 import { CombinedAuthGuard } from '../common/guards/both/jwtCombinedAuth.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerConfig } from 'src/config/multer.config';
 
 @ApiTags('teacher')
 @ApiBearerAuth()
@@ -162,5 +167,22 @@ export class TeacherController {
   @ApiBody({ type: UpdatePasswordDto })
   updatePassword(@Param('id') id: string, @Body() dto: UpdatePasswordDto) {
     return this.teacherService.updatePassword(id, dto);
+  }
+
+  @Post(':id/upload-image')
+  @UseInterceptors(FileInterceptor('image', multerConfig))
+  uploadImage(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return this.teacherService.uploadImage(id, file.filename);
+  }
+
+  @Delete(':id/delete-image')
+  deleteImage(@Param('id') id: string) {
+    return this.teacherService.deleteImage(id);
   }
 }

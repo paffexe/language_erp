@@ -8,6 +8,8 @@ import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 
 @Injectable()
 export class TeacherService {
@@ -157,5 +159,65 @@ export class TeacherService {
     });
 
     return { message: 'Password updated successfully' };
+  }
+
+  // Add this method to your TeacherService class
+  async uploadImage(id: string, filename: string) {
+    const teacher = await this.prismaService.teacher.findUnique({
+      where: { id },
+    });
+
+    if (!teacher) {
+      // Delete the uploaded file if teacher not found
+      await unlink(join('./uploads/teachers', filename)).catch(() => {});
+      throw new NotFoundException('Teacher not found');
+    }
+
+    // Delete old image if exists
+    if (teacher.imageUrl) {
+      const oldImagePath = join('./', teacher.imageUrl);
+      await unlink(oldImagePath).catch(() => {});
+    }
+
+    const imageUrl = `uploads/teachers/${filename}`;
+
+    const updatedTeacher = await this.prismaService.teacher.update({
+      where: { id },
+      data: { imageUrl },
+    });
+
+    return {
+      message: 'Image uploaded successfully',
+      teacher: updatedTeacher,
+    };
+  }
+
+  async deleteImage(id: string) {
+    const teacher = await this.prismaService.teacher.findUnique({
+      where: { id },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    if (!teacher.imageUrl) {
+      throw new BadRequestException('Teacher has no image to delete');
+    }
+
+    // Delete the file
+    const imagePath = join('./', teacher.imageUrl);
+    await unlink(imagePath).catch(() => {});
+
+    // Update database
+    const updatedTeacher = await this.prismaService.teacher.update({
+      where: { id },
+      data: { imageUrl: null },
+    });
+
+    return {
+      message: 'Image deleted successfully',
+      teacher: updatedTeacher,
+    };
   }
 }

@@ -8,12 +8,17 @@ import { winstonConfig } from './common/logging/winstonLogging';
 import { AllExceptionFilter } from './common/errors/errorHandling';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import * as fs from 'fs';
+import { join } from 'path';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function start() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
   app.enableCors();
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
 
   app.useGlobalFilters(new AllExceptionFilter());
 
