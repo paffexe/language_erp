@@ -392,7 +392,6 @@ export class LessonService {
 
   async remove(id: string) {
     try {
-      
       const lesson = await this.prisma.lesson.findFirst({
         where: { id, isDeleted: false },
       });
@@ -438,7 +437,10 @@ export class LessonService {
     });
 
     if (!lessons.length) {
-      throw new NotFoundException('No lessons found for this student');
+      return {
+        message: 'No lessons found for this student',
+        lessons: [],
+      };
     }
     return {
       message: 'Lessons retrieved successfully',
