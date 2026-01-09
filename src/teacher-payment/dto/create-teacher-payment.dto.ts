@@ -1,87 +1,78 @@
-import {
-  IsString,
-  IsOptional,
-  IsBoolean,
-  IsInt,
-  Min,
-  IsDateString,
-  MaxLength,
-} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsBoolean,
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateTeacherPaymentDto {
   @ApiProperty({
-    description: 'ID of the teacher receiving the payment',
+    description: 'Teacher ID',
     example: '4e1cb22f-aa5c-4568-a346-685565ba78ec',
-    maxLength: 255,
   })
   @IsString()
   teacherId: string;
 
   @ApiProperty({
-    description: 'ID of the lesson associated with this payment',
-    example: 'clx2b3c4d5e6f7g8h9i0j1k',
-    maxLength: 255,
+    description: 'Lesson ID',
+    example: 'clx2lesson123',
   })
   @IsString()
   lessonId: string;
 
   @ApiProperty({
-    description:
-      'Total amount for the lesson (in smallest currency unit, e.g., cents)',
+    description: 'Total lesson price',
     example: 5000,
-    minimum: 0,
   })
   @IsInt()
   @Min(0)
   totalLessonAmount: number;
 
   @ApiProperty({
-    description: 'Platform commission amount (in smallest currency unit)',
-    example: 500,
-    minimum: 0,
+    description: 'Platform commission percentage',
+    example: 10,
   })
   @IsInt()
   @Min(0)
   platformComission: number;
 
   @ApiProperty({
-    description: 'Platform commission percentage or fixed amount',
-    example: 100,
-    minimum: 0,
+    description: 'Platform commission amount',
+    example: 500,
   })
   @IsInt()
   @Min(0)
   platformAmount: number;
 
   @ApiProperty({
-    description: 'Amount received by the teacher (in smallest currency unit)',
+    description: 'Teacher payout amount',
     example: 4500,
-    minimum: 0,
   })
   @IsInt()
   @Min(0)
   teacherAmount: number;
 
   @ApiProperty({
-    description: 'Person or entity who made the payment',
-    example: 'Student Name',
-    maxLength: 100,
+    description: 'Who made the payment',
+    example: 'Student',
   })
   @IsString()
-  @MaxLength(100)
   paidBy: string;
 
-  @ApiProperty({
-    description: 'Date and time when payment was made (ISO 8601 format)',
-    example: '2024-01-15T10:30:00.000Z',
-    format: 'date-time',
-  })
-  @IsDateString()
-  paidAt: string;
+  // @ApiPropertyOptional({
+  //   description: 'Payment date (ISO). Defaults to current date/time if not provided.',
+  //   example: '2024-01-15T10:30:00.000Z',
+  // })
+  // @IsOptional()
+  // @IsDateString()
+  // paidAt?: string;
 
   @ApiPropertyOptional({
-    description: 'Whether the payment has been canceled',
+    description: 'Whether the payment is canceled',
     example: false,
     default: false,
   })
@@ -90,42 +81,37 @@ export class CreateTeacherPaymentDto {
   isCanceled?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Date and time when payment was canceled (ISO 8601 format)',
+    description: 'Cancellation date (ISO)',
     example: '2024-01-16T14:20:00.000Z',
-    format: 'date-time',
   })
   @IsOptional()
   @IsDateString()
+  @ValidateIf((o) => o.isCanceled === true)
   canceledAt?: string;
 
   @ApiPropertyOptional({
-    description: 'Person or entity who canceled the payment',
-    example: 'Admin Name',
-    maxLength: 100,
+    description: 'ID of the user who canceled the payment',
+    example: 'admin-uuid-123',
   })
   @IsOptional()
   @IsString()
-  @MaxLength(100)
+  @ValidateIf((o) => o.isCanceled === true)
   canceledBy?: string;
 
   @ApiPropertyOptional({
-    description: 'Reason for payment cancellation',
+    description: 'Reason for cancellation',
     example: 'Lesson was rescheduled',
-    maxLength: 500,
   })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @ValidateIf((o) => o.isCanceled === true)
   canceledReason?: string;
 
   @ApiPropertyOptional({
-    description: 'Additional notes about the payment',
-    example:
-      'Payment processed via Stripe, Transaction ID: ch_1A2B3C4D5E6F7G8H9I0J',
-    maxLength: 1000,
+    description: 'Additional notes',
+    example: 'Paid via cash',
   })
   @IsOptional()
   @IsString()
-  @MaxLength(1000)
   notes?: string;
 }

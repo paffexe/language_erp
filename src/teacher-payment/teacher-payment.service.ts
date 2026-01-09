@@ -10,9 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class TeacherPaymentService {
-  constructor(
-    private readonly prismaService: PrismaService,
-  ) {}
+  constructor(private readonly prismaService: PrismaService) {}
 
   async create(createTeacherPaymentDto: CreateTeacherPaymentDto) {
     const {
@@ -23,7 +21,6 @@ export class TeacherPaymentService {
       platformAmount,
       teacherAmount,
       paidBy,
-      paidAt,
       isCanceled,
       canceledAt,
       canceledBy,
@@ -35,37 +32,60 @@ export class TeacherPaymentService {
     const teacher = await this.prismaService.teacher.findUnique({
       where: { id: teacherId },
     });
-
     if (!teacher) {
       throw new NotFoundException(`Teacher with ID ${teacherId} not found`);
     }
 
     // Check if lesson exists
-    // const lesson = await this.prismaService.lesson.findUnique({
-    //   where: { id: lessonId },
-    // });
-
-    // if (!lesson) {
-    //   throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
-    // }
+    const lesson = await this.prismaService.lesson.findUnique({
+      where: { id: lessonId },
+    });
+    if (!lesson) {
+      throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
+    }
 
     // Check if payment already exists for this lesson
     const existingPayment = await this.prismaService.teacherPayment.findUnique({
       where: { lessonId },
     });
-
     if (existingPayment) {
       throw new ConflictException(
         `Payment already exists for lesson ID ${lessonId}`,
       );
     }
 
+    // Prevent creating a payment that is already marked as canceled
+    if (isCanceled === true) {
+      throw new BadRequestException(
+        'Cannot create a payment with canceled status. Create the payment first, then cancel it if needed.',
+      );
+    }
+
     // Validate mathematical correctness of amounts
-    // if (platformAmount + teacherAmount !== totalLessonAmount) {
-    //   throw new BadRequestException(
-    //     'Sum of platformAmount and teacherAmount must equal totalLessonAmount',
-    //   );
-    // }
+    // Method 1: platformAmount + teacherAmount = totalLessonAmount
+    const sumCheck = platformAmount + teacherAmount;
+    if (Math.abs(sumCheck - totalLessonAmount) > 0.01) {
+      throw new BadRequestException(
+        `Sum of platformAmount (${platformAmount}) and teacherAmount (${teacherAmount}) must equal totalLessonAmount (${totalLessonAmount})`,
+      );
+    }
+
+    // Method 2: Validate platformAmount calculation
+    const expectedPlatformAmount =
+      totalLessonAmount * (platformComission / 100);
+    if (Math.abs(platformAmount - expectedPlatformAmount) > 0.01) {
+      throw new BadRequestException(
+        `Platform amount (${platformAmount}) does not match expected calculation: ${totalLessonAmount} * (${platformComission} / 100) = ${expectedPlatformAmount}`,
+      );
+    }
+
+    // Method 3: Validate teacherAmount calculation
+    const expectedTeacherAmount = totalLessonAmount - platformAmount;
+    if (Math.abs(teacherAmount - expectedTeacherAmount) > 0.01) {
+      throw new BadRequestException(
+        `Teacher amount (${teacherAmount}) does not match expected calculation: ${totalLessonAmount} - ${platformAmount} = ${expectedTeacherAmount}`,
+      );
+    }
 
     // Create the payment
     const payment = await this.prismaService.teacherPayment.create({
@@ -77,11 +97,11 @@ export class TeacherPaymentService {
         platformAmount,
         teacherAmount,
         paidBy,
-        paidAt: new Date(paidAt),
-        isCanceled: isCanceled ?? false,
-        canceledAt: canceledAt ? new Date(canceledAt) : null,
-        canceledBy: canceledBy ?? null,
-        canceledReason: canceledReason ?? null,
+        paidAt: new Date(),
+        isCanceled: false,
+        canceledAt: null,
+        canceledBy: null,
+        canceledReason: null,
         notes: notes ?? null,
       },
       include: {
@@ -89,7 +109,6 @@ export class TeacherPaymentService {
         lesson: true,
       },
     });
-
 
     return {
       message: 'Teacher payment created successfully',
@@ -266,5 +285,35 @@ export class TeacherPaymentService {
       message: 'Teacher payment deleted successfully',
       payment,
     };
+  }
+
+  async cancel(paymentId: string, canceledBy: string, canceledReason: string) {
+    if (!canceledBy || !canceledReason) {
+      throw new BadRequestException(
+        'canceledBy and canceledReason are required when canceling a payment',
+      );
+    }
+
+    const payment = await this.prismaService.teacherPayment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Payment with ID ${paymentId} not found`);
+    }
+
+    if (payment.isCanceled) {
+      throw new ConflictException('Payment is already canceled');
+    }
+
+    return await this.prismaService.teacherPayment.update({
+      where: { id: paymentId },
+      data: {
+        isCanceled: true,
+        canceledAt: new Date(),
+        canceledBy,
+        canceledReason,
+      },
+    });
   }
 }
