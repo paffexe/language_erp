@@ -445,16 +445,16 @@ export class AuthService {
     const tokens = await this.generateTeacherTokens(teacher);
     this.setRefreshTokenCookie(res, tokens.refreshToken, 'teacher');
 
-    return {
-      message: 'Google orqali muvaffaqiyatli kirdingiz',
-      id: teacher.id,
-      email: teacher.email,
-      fullName: teacher.fullName,
-      isNewUser:
-        !teacher.phoneNumber || teacher.phoneNumber.startsWith('temp_'),
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-    };
+    const isNewUser =
+      !teacher.phoneNumber || teacher.phoneNumber.startsWith('temp_');
+
+    const redirectUrl = new URL('http://localhost:5173/google-callback');
+    redirectUrl.searchParams.append('accessToken', tokens.accessToken);
+    redirectUrl.searchParams.append('isNewUser', isNewUser.toString());
+    redirectUrl.searchParams.append('email', teacher.email);
+    redirectUrl.searchParams.append('fullName', teacher.fullName);
+
+    return { redirectUrl: redirectUrl.toString(), teacher, tokens };
   }
 
   async sendOtp(

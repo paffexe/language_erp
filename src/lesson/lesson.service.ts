@@ -453,7 +453,11 @@ export class LessonService {
     });
 
     if (!lessons.length) {
-      throw new NotFoundException('No lessons found for this teacher');
+      // throw new NotFoundException('No lessons found for this teacher');
+      return {
+        message: 'No lessons found for this teacher',
+        lessons: [],
+      };
     }
 
     return {
