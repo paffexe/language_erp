@@ -13,7 +13,7 @@ import { join } from 'path';
 
 @Injectable()
 export class TeacherService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) { }
 
   async create(createTeacherDto: CreateTeacherDto) {
     const {
@@ -25,6 +25,12 @@ export class TeacherService {
       cardNumber,
       specification,
       googleId,
+      level,
+      description,
+      hourPrice,
+      portfolioLink,
+      experience,
+      isActive,
     } = createTeacherDto;
 
     if (password !== confirm_password) {
@@ -60,6 +66,12 @@ export class TeacherService {
         phoneNumber,
         cardNumber,
         password: hashPassword,
+        level,
+        description,
+        hourPrice,
+        portfolioLink,
+        experience,
+        isActive: isActive ?? true,
       },
     });
 
@@ -72,13 +84,9 @@ export class TeacherService {
   async findAll() {
     const teachers = await this.prismaService.teacher.findMany();
 
-    if (!teachers || teachers.length === 0) {
-      throw new NotFoundException('No teachers found');
-    }
-
     return {
       message: 'Teachers retrieved successfully',
-      teachers,
+      teachers: teachers || [],
     };
   }
 
@@ -169,14 +177,14 @@ export class TeacherService {
 
     if (!teacher) {
       // Delete the uploaded file if teacher not found
-      await unlink(join('./uploads/teachers', filename)).catch(() => {});
+      await unlink(join('./uploads/teachers', filename)).catch(() => { });
       throw new NotFoundException('Teacher not found');
     }
 
     // Delete old image if exists
     if (teacher.imageUrl) {
       const oldImagePath = join('./', teacher.imageUrl);
-      await unlink(oldImagePath).catch(() => {});
+      await unlink(oldImagePath).catch(() => { });
     }
 
     const imageUrl = `uploads/teachers/${filename}`;
@@ -207,7 +215,7 @@ export class TeacherService {
 
     // Delete the file
     const imagePath = join('./', teacher.imageUrl);
-    await unlink(imagePath).catch(() => {});
+    await unlink(imagePath).catch(() => { });
 
     // Update database
     const updatedTeacher = await this.prismaService.teacher.update({
