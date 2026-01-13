@@ -224,7 +224,7 @@ export class AuthController {
       res,
     );
 
-    return result;
+    return res.redirect(result.redirectUrl);
   }
 
   @Post('teacher/send-otp')

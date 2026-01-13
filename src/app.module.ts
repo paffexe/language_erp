@@ -16,6 +16,9 @@ import { TelegrafModule } from 'nestjs-telegraf';
 import { BOT_NAME } from './app.constants';
 import { BotModule } from './bot/bot.module';
 import { Context } from 'telegraf';
+import { PassportModule } from '@nestjs/passport';
+import { JwtModule } from '@nestjs/jwt';
+import { GoogleStrategy } from './common/strategies/google.strategy';
 
 const LocalSession = require('telegraf-session-local');
 
@@ -28,6 +31,11 @@ const sessions = new LocalSession({
 
 @Module({
   imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: process.env.ACCESS_TOKEN_KEY || 'your-secret-key',
+      signOptions: { expiresIn: '7d' },
+    }),
     ConfigModule.forRoot({ envFilePath: '.env', isGlobal: true }),
     PrismaModule,
     TeacherModule,
@@ -52,6 +60,6 @@ const sessions = new LocalSession({
     BotModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [GoogleStrategy],
 })
 export class AppModule {}
