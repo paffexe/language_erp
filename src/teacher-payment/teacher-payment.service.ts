@@ -152,22 +152,31 @@ export class TeacherPaymentService {
     // Get total count for pagination
     const total = await this.prismaService.teacherPayment.count({ where });
 
-    // Get payments with relations
     const payments = await this.prismaService.teacherPayment.findMany({
       where,
-      include: {
-        // teacher: true,
-        // lesson: true,
-      },
       skip,
       take: limit,
       orderBy: {
         createdAt: 'desc',
       },
+      select: {
+        id: true,
+        totalLessonAmount: true,
+        platformComission: true,
+        teacherAmount: true,
+        platformAmount: true,
+        isCanceled: true,
+        paidAt: true,
+        teacher: {
+          select: {
+            fullName: true,
+          },
+        },
+      },
     });
 
     return {
-      message: 'Teacher payments retrieved successfully',
+      message: 'Teacher payments retrieved successfully1',
       payments,
       pagination: {
         total,
