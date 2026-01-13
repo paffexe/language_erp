@@ -1,6 +1,5 @@
-
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AdminRole } from '../../../generated/prisma/enums';
+import { AdminRole } from '../../../generated/prisma/client';
 import {
   IsBoolean,
   IsEnum,
@@ -11,13 +10,13 @@ import {
 } from 'class-validator';
 
 export class CreateAdminDto {
-  @ApiProperty({ example: 'admin123', description: 'Admin username' })
+  @ApiProperty({ example: 'admin123' })
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
   username: string;
 
-  @ApiProperty({ example: 'SecurePass123!', description: 'Admin password' })
+  @ApiProperty({ example: 'SecurePass123!' })
   @IsString()
   @IsNotEmpty()
   @MinLength(4)
@@ -26,17 +25,17 @@ export class CreateAdminDto {
   @ApiProperty({
     enum: AdminRole,
     example: AdminRole.admin,
-    description: 'Admin role',
   })
-  @IsEnum(['admin', 'superadmin'])
+  @IsEnum(AdminRole)
   role: AdminRole;
 
-  @ApiProperty({ example: '+998901234567', description: 'Admin phone number' })
+  @ApiProperty({ example: '+998901234567' })
   @IsString()
   @IsNotEmpty()
   phoneNumber: string;
 
+  @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
-  isActive: boolean;
+  isActive?: boolean;
 }
