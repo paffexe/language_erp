@@ -30,6 +30,16 @@ export class AdminService {
       throw new ConflictException('Username or phone already exists');
     }
 
+    // SuperAdmin faqat bitta bo'lishi mumkin
+    if (dto.role === AdminRole.superAdmin) {
+      const superAdminExists = await this.prisma.admin.findFirst({
+        where: { role: AdminRole.superAdmin, isDeleted: false },
+      });
+      if (superAdminExists) {
+        throw new BadRequestException('SuperAdmin already exists. Only one SuperAdmin is allowed.');
+      }
+    }
+
     const password = await bcrypt.hash(dto.password, 10);
 
     const admin = await this.prisma.admin.create({
