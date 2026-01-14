@@ -29,8 +29,9 @@ import {
 import { CombinedAuthGuard } from '../common/guards/both/jwtCombinedAuth.guard';
 import { TeacherAuthGuard } from '../common/guards/user/jwtUser-auth.guard';
 import { TeacherSelfOrSuperAdminGuard } from '../common/guards/user/jwtTeacherSelf-superAdmin.guard';
-import { TeacherLessonOwnerGuard } from '../common/guards/user/jwtTeacher-ownlessons.guard';
+
 import { TeacherLessonCreateGuard } from 'src/common/guards/user/jwtTeacherLessonCreate.guard';
+import { TeacherOwnsLessonOrAdminGuard } from 'src/common/guards/user/jwtTeacher-ownlessons.guard';
 
 @ApiTags('Lesson')
 @ApiForbiddenResponse({ description: 'Forbidden' })
@@ -84,7 +85,7 @@ export class LessonController {
     return this.lessonService.findOne(id);
   }
 
-  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
+  @UseGuards(CombinedAuthGuard, TeacherOwnsLessonOrAdminGuard)
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update lesson' })
@@ -93,7 +94,7 @@ export class LessonController {
     return this.lessonService.update(id, dto);
   }
 
-  @UseGuards(CombinedAuthGuard, TeacherLessonOwnerGuard)
+  @UseGuards(CombinedAuthGuard, TeacherOwnsLessonOrAdminGuard)
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete lesson (soft delete)' })

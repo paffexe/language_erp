@@ -11,7 +11,7 @@ import { google } from 'googleapis';
 
 @Injectable()
 export class LessonService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /// generating google meet link
   private async generateGoogleMeetLink(
@@ -209,6 +209,7 @@ export class LessonService {
           startTime,
           endTime,
           teacherId: dto.teacherId,
+          studentId: null as any,
           googleMeetsUrl: generatedMeetsUrl.hangoutLink,
           googleEventId: generatedMeetsUrl.eventId,
           price: dto.price,
@@ -248,15 +249,11 @@ export class LessonService {
         }),
       ]);
 
-      if (!count) {
-        throw new NotFoundException('No lessons found');
-      }
-
       return {
         statusCode: 200,
         message: 'Lessons retrieved successfully',
         count,
-        lessons,
+        lessons: lessons || [],
       };
     } catch (error) {
       if (error instanceof NotFoundException) {

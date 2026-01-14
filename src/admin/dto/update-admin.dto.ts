@@ -8,6 +8,6 @@ export class UpdateAdminDto extends PartialType(
   @ApiPropertyOptional({ example: 'NewSecurePass123!' })
   @IsOptional()
   @IsString()
-  @MinLength(8)
+  @MinLength(6)
   newPassword?: string;
 }

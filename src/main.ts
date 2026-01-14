@@ -10,20 +10,37 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import * as fs from 'fs';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import * as express from 'express';
 
 async function start() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
+
+  const config = app.get(ConfigService);
+  const PORT = config.get<number>('PORT') ?? 3030;
+
+  // Get Express instance
+  const expressApp = app.getHttpAdapter().getInstance();
+
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
-  });
+
+  app.use(cookieParser());
+
+  const uploadsPath = join(process.cwd(), 'uploads');
+  console.log('📁 Uploads directory:', uploadsPath);
+  console.log('📁 Directory exists:', fs.existsSync(uploadsPath));
+
+  if (fs.existsSync(uploadsPath)) {
+    const files = fs.readdirSync(join(uploadsPath, 'teachers'));
+  }
+
+  expressApp.use('/uploads', express.static(uploadsPath));
 
   app.useGlobalFilters(new AllExceptionFilter());
 
@@ -39,10 +56,7 @@ async function start() {
     }),
   );
 
-  const config = app.get(ConfigService);
   app.setGlobalPrefix('api');
-  const PORT = config.get<number>('PORT');
-  app.use(cookieParser());
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Language CRM API')
@@ -56,7 +70,6 @@ async function start() {
     const stats = fs.statSync(sessionFile);
     const fileAge = Date.now() - stats.mtimeMs;
     const oneWeek = 7 * 24 * 60 * 60 * 1000;
-
     if (fileAge > oneWeek) {
       fs.unlinkSync(sessionFile);
       console.log('🗑️ Old session file cleaned (older than 1 week)');
@@ -68,9 +81,8 @@ async function start() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(PORT ?? 3030, () => {
+  await app.listen(PORT, () => {
     console.log(`Server running on port: ${PORT}`);
   });
 }
-
 start();
