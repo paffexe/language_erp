@@ -20,10 +20,6 @@ export class TeacherSelfOrSuperAdminGuard implements CanActivate {
       return true;
     }
 
-    if (admin.role === 'teacher' && admin.id === paramId) {
-      return true;
-    }
-
     throw new ForbiddenException(
       "Siz faqat o'z profilingizni tahrirlashingiz mumkin",
     );
