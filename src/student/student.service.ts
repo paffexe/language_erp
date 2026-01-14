@@ -33,6 +33,10 @@ export class StudentService {
   async findAll(query: StudentQueryDto) {
     const students = await this.prisma.student.findMany();
 
+    if (students.length === 0) {
+      throw new NotFoundException('No students found');
+    }
+
     return {
       message: 'Students retrieved successfully',
       students,
