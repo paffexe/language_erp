@@ -14,10 +14,12 @@ import { AdminQueryDto } from './dto/admin-query.dto';
 import { AdminRole, Prisma } from '../../generated/prisma/client';
 import { LoginAdminDto } from './dto/login-admin.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { PaginatedResponseDto } from 'src/common/pagination/response/pagination-response.dto';
+import { PaginationHelper } from 'src/common/helpers/pagination-helper';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
   async create(dto: CreateAdminDto): Promise<AdminResponseDto> {
     const exists = await this.prisma.admin.findFirst({
       where: {
@@ -42,39 +44,38 @@ export class AdminService {
       },
     });
 
-    console.log(admin);
-
     return new AdminResponseDto(admin);
   }
 
-  async findAll(query: AdminQueryDto) {
+  async findAll(
+    query: AdminQueryDto,
+  ): Promise<PaginatedResponseDto<AdminResponseDto>> {
     const { page = 1, limit = 10, search, role, isActive } = query;
-    const skip = (page - 1) * limit;
+
     const where: Prisma.AdminWhereInput = {
       isDeleted: false,
     };
+
     if (search) {
       where.OR = [
         { username: { contains: search, mode: 'insensitive' } },
         { phoneNumber: { contains: search } },
       ];
     }
+
     if (role) where.role = role;
     if (isActive !== undefined) where.isActive = isActive;
-    const [data, total] = await Promise.all([
-      this.prisma.admin.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.admin.count({ where }),
-    ]);
 
-    return {
-      data: data.map((a) => new AdminResponseDto(a)),
-      meta: { total, page, limit, totalPage: Math.ceil(total / limit) },
-    };
+    return PaginationHelper.paginate<
+      Prisma.AdminGetPayload<{}>,
+      AdminResponseDto
+    >(
+      this.prisma.admin,
+      where,
+      { page, limit },
+      { orderBy: { createdAt: 'desc' } },
+      (admin) => new AdminResponseDto(admin),
+    );
   }
 
   async findOne(id: string): Promise<AdminResponseDto> {

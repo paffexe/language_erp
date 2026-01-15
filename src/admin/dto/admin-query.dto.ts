@@ -1,19 +1,10 @@
 import { IsOptional, IsString, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { AdminRole } from '../../../generated/prisma/enums';
+import { PaginationDto } from 'src/common/pagination/dto/pagination.dto';
+import { AdminRole } from 'generated/prisma/enums';
 
-export class AdminQueryDto {
-  @ApiPropertyOptional({ example: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ example: 10 })
-  @IsOptional()
-  @Type(() => Number)
-  limit?: number = 10;
-
+export class AdminQueryDto extends PaginationDto {
   @ApiPropertyOptional({ example: 'admin' })
   @IsOptional()
   @IsString()

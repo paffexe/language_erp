@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import * as cookieParser from 'cookie-parser';
@@ -6,7 +6,11 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/logging/winstonLogging';
 import { AllExceptionFilter } from './common/errors/errorHandling';
-import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  ClassSerializerInterceptor,
+  ValidationPipe,
+} from '@nestjs/common';
 import * as fs from 'fs';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -64,6 +68,8 @@ async function start() {
     .setVersion('1.0')
     .addBearerAuth()
     .build();
+
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   const sessionFile = './session_db.json';
   if (fs.existsSync(sessionFile)) {
