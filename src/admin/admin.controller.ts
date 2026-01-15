@@ -28,7 +28,7 @@ import { AdminSelfOrSuperAdminGuard } from '../common/guards/jwtAdminSelf-superA
 @ApiTags('Admin')
 @Controller('admins')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @UseGuards(AdminAuthGuard, RolesGuard)
   @Roles('superAdmin')
@@ -52,8 +52,8 @@ export class AdminController {
   @Get(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get admin by ID' })
-  findOne(@Param('id') id: string) {
-    const admin = this.adminService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    const admin = await this.adminService.findOne(id);
     return {
       message: 'Admin found',
       data: admin,

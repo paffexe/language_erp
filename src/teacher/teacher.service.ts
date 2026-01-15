@@ -32,6 +32,12 @@ export class TeacherService {
       cardNumber,
       specification,
       googleId,
+      level,
+      description,
+      hourPrice,
+      portfolioLink,
+      experience,
+      isActive,
     } = createTeacherDto;
 
     if (password !== confirm_password) {
@@ -67,6 +73,12 @@ export class TeacherService {
         phoneNumber,
         cardNumber,
         password: hashPassword,
+        level,
+        description,
+        hourPrice,
+        portfolioLink,
+        experience,
+        isActive: isActive ?? true,
       },
     });
 
@@ -79,13 +91,9 @@ export class TeacherService {
   async findAll() {
     const teachers = await this.prismaService.teacher.findMany();
 
-    if (!teachers || teachers.length === 0) {
-      throw new NotFoundException('No teachers found');
-    }
-
     return {
       message: 'Teachers retrieved successfully',
-      teachers,
+      teachers: teachers || [],
     };
   }
 
@@ -235,7 +243,7 @@ export class TeacherService {
 
     // Delete the file
     const imagePath = join('./', teacher.imageUrl);
-    await unlink(imagePath).catch(() => {});
+    await unlink(imagePath).catch(() => { });
 
     // Update database
     const updatedTeacher = await this.prismaService.teacher.update({

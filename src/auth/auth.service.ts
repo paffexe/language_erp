@@ -40,9 +40,43 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly smsService: SmsService,
     private readonly teacherService: TeacherService,
-  ) {}
+  ) { }
 
   async loginAdmin(dto: LoginDto, res: Response) {
+    // Check for env superadmin first
+    const envUsername = process.env.SUPER_ADMIN_USERNAME;
+    const envPassword = process.env.SUPER_ADMIN_PASSWORD;
+
+    if (dto.username === envUsername && dto.password === envPassword) {
+      // Generate token for env superadmin
+      const payload = {
+        id: 'env-superadmin',
+        role: 'superAdmin',
+        is_active: true,
+      };
+
+      const [accessToken, refreshToken] = await Promise.all([
+        this.jwtService.signAsync(payload, {
+          secret: process.env.ADMIN_ACCESS_TOKEN_KEY,
+          expiresIn: 54000,
+        }),
+        this.jwtService.signAsync(payload, {
+          secret: process.env.ADMIN_REFRESH_TOKEN_KEY,
+          expiresIn: 1296000,
+        }),
+      ]);
+
+      this.setRefreshTokenCookie(res, refreshToken, 'admin');
+
+      return {
+        message: 'Tizimga muvaffaqiyatli kirdingiz',
+        id: 'env-superadmin',
+        role: 'superAdmin',
+        accessToken,
+        refreshToken,
+      };
+    }
+
     const admin = await this.prisma.admin.findFirst({
       where: { username: dto.username, isDeleted: false },
     });
