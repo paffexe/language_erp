@@ -26,8 +26,11 @@ export class AllExceptionFilter implements ExceptionFilter {
         ? exception.message
         : (exception as any)?.message || 'Internal server error';
 
-    const stack = (exception as any)?.stack || '';
-    this.logger.error(`Status: ${status} Error: ${message}`, stack);
+    if (status >= 500) {
+      const stack = (exception as any)?.stack || '';
+      this.logger.error(`Status: ${status} Error: ${message}`, stack);
+    }
+
     response.status(status).json({
       statusCode: status,
       message,

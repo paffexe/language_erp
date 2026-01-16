@@ -19,15 +19,19 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 export class AdminService {
   constructor(private readonly prisma: PrismaService) { }
   async create(dto: CreateAdminDto): Promise<AdminResponseDto> {
+    // Database darajasida unique constraint bor, shuning uchun isDeleted'ni tekshirmaymiz
     const exists = await this.prisma.admin.findFirst({
       where: {
         OR: [{ username: dto?.username }, { phoneNumber: dto?.phoneNumber }],
-        isDeleted: false,
       },
     });
 
     if (exists) {
-      throw new ConflictException('Username or phone already exists');
+      throw new ConflictException(
+        exists.username === dto.username
+          ? 'Username already exists'
+          : 'Phone number already exists',
+      );
     }
 
     // SuperAdmin faqat bitta bo'lishi mumkin
