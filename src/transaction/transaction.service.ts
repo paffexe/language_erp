@@ -8,6 +8,11 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { FindTransactionsDto } from './dto/find-transaction.dto';
 import { TransactionStatus } from '../../generated/prisma/enums';
+import { TransactionResponseDto } from './dto/transaction-response.dto';
+import { PaginationHelper } from 'src/common/helpers/pagination-helper';
+import { Prisma } from 'generated/prisma/client';
+import { TransactionQueryDto } from './dto/transQuery.dto';
+import { PaginatedResponseDto } from 'src/common/pagination/response/pagination-response.dto';
 
 @Injectable()
 export class TransactionService {
@@ -34,7 +39,67 @@ export class TransactionService {
     }
   }
 
-  async findAll(query: FindTransactionsDto) {
+  // async findAll(query: FindTransactionsDto) {
+  //   const {
+  //     page = 1,
+  //     limit = 10,
+  //     lessonId,
+  //     studentId,
+  //     status,
+  //     performedTimeFrom,
+  //     performedTimeTo,
+  //   } = query;
+
+  //   const skip = (page - 1) * limit;
+
+  //   const where: any = { isDeleted: false };
+
+  //   if (lessonId) where.lessonId = lessonId;
+  //   if (studentId) where.studentId = studentId;
+  //   if (status) where.status = status;
+
+  //   if (performedTimeFrom || performedTimeTo) {
+  //     where.performedTime = {};
+  //     if (performedTimeFrom)
+  //       where.performedTime.gte = new Date(performedTimeFrom);
+  //     if (performedTimeTo) where.performedTime.lte = new Date(performedTimeTo);
+  //   }
+
+  //   const [data, total] = await Promise.all([
+  //     this.prisma.transaction.findMany({
+  //       where,
+  //       skip,
+  //       take: limit,
+  //       orderBy: { createdAt: 'desc' },
+  //       include: {
+  //         lesson: {
+  //           select: { id: true, name: true, startTime: true, endTime: true },
+  //         },
+  //         student: {
+  //           select: {
+  //             id: true,
+  //             firstName: true,
+  //             lastName: true,
+  //             phoneNumber: true,
+  //           },
+  //         },
+  //       },
+  //     }),
+  //     this.prisma.transaction.count({ where }),
+  //   ]);
+
+  //   return {
+  //     data,
+  //     total,
+  //     page,
+  //     limit,
+  //     totalPages: Math.ceil(total / limit),
+  //   };
+  // }
+
+  async findAll(
+    query: TransactionQueryDto,
+  ): Promise<PaginatedResponseDto<TransactionResponseDto>> {
     const {
       page = 1,
       limit = 10,
@@ -45,30 +110,57 @@ export class TransactionService {
       performedTimeTo,
     } = query;
 
-    const skip = (page - 1) * limit;
-
-    const where: any = { isDeleted: false };
+    const where: Prisma.TransactionWhereInput = {
+      isDeleted: false,
+    };
 
     if (lessonId) where.lessonId = lessonId;
     if (studentId) where.studentId = studentId;
     if (status) where.status = status;
 
     if (performedTimeFrom || performedTimeTo) {
-      where.performedTime = {};
-      if (performedTimeFrom)
-        where.performedTime.gte = new Date(performedTimeFrom);
-      if (performedTimeTo) where.performedTime.lte = new Date(performedTimeTo);
+      where.performedTime = {
+        ...(performedTimeFrom && { gte: performedTimeFrom }),
+        ...(performedTimeTo && { lte: performedTimeTo }),
+      };
     }
 
-    const [data, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where,
-        skip,
-        take: limit,
+    return PaginationHelper.paginate<
+      Prisma.TransactionGetPayload<{
+        include: {
+          lesson: {
+            select: {
+              id: true;
+              name: true;
+              startTime: true;
+              endTime: true;
+            };
+          };
+          student: {
+            select: {
+              id: true;
+              firstName: true;
+              lastName: true;
+              phoneNumber: true;
+            };
+          };
+        };
+      }>,
+      TransactionResponseDto
+    >(
+      this.prisma.transaction,
+      where,
+      { page, limit },
+      {
         orderBy: { createdAt: 'desc' },
         include: {
           lesson: {
-            select: { id: true, name: true, startTime: true, endTime: true },
+            select: {
+              id: true,
+              name: true,
+              startTime: true,
+              endTime: true,
+            },
           },
           student: {
             select: {
@@ -79,17 +171,13 @@ export class TransactionService {
             },
           },
         },
-      }),
-      this.prisma.transaction.count({ where }),
-    ]);
-
-    return {
-      data,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+      },
+      (tx) =>
+        ({
+          ...tx,
+          price: tx.price ? Number(tx.price) : 0,
+        }) as TransactionResponseDto,
+    );
   }
 
   async findOne(id: string) {

@@ -32,6 +32,7 @@ import { TeacherSelfOrSuperAdminGuard } from '../common/guards/user/jwtTeacherSe
 
 import { TeacherLessonCreateGuard } from 'src/common/guards/user/jwtTeacherLessonCreate.guard';
 import { TeacherOwnsLessonOrAdminGuard } from 'src/common/guards/user/jwtTeacher-ownlessons.guard';
+import { LessonQueryDto } from './dto/lesson-query.dto';
 
 @ApiTags('Lesson')
 @ApiForbiddenResponse({ description: 'Forbidden' })
@@ -53,26 +54,11 @@ export class LessonController {
   @UseGuards(CombinedAuthGuard)
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all lessons' })
   @ApiOkResponse({ description: 'Lessons retrieved successfully' })
-  findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
-    const pageNum = Number(page) || 1;
-    const limitNum = Number(limit) || 10;
-    const startIndex = (pageNum - 1) * limitNum;
-    const endIndex = startIndex + limitNum;
-
-    return this.lessonService.findAll().then((res) => {
-      const paginatedLessons = res.lessons.slice(startIndex, endIndex);
-
-      return {
-        statusCode: 200,
-        message: 'Lessons retrieved successfully',
-        count: res.count,
-        page: pageNum,
-        limit: limitNum,
-        lessons: paginatedLessons,
-      };
-    });
+  findAll(@Query() query: LessonQueryDto) {
+    return this.lessonService.findAll(query);
   }
 
   @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
@@ -108,7 +94,11 @@ export class LessonController {
   @ApiOperation({ summary: 'Get lessons by id for teacher' })
   @ApiParam({ name: 'id', type: String })
   @ApiNotFoundResponse({ description: 'Lesson not found' })
-  findAllbyTeacher(@Param('id', ParseUUIDPipe) id: string) {
-    return this.lessonService.findAllbyTeacher(id);
+  findAllbyTeacher(
+    @Param('id', ParseUUIDPipe)
+    id: string,
+    @Query() query: LessonQueryDto,
+  ) {
+    return this.lessonService.findAllByTeacher(id, query);
   }
 }

@@ -25,17 +25,17 @@ export class LessonTemplateService {
         throw new BadRequestException('Teacher is not active');
       }
 
+      // Check for duplicate template name for this teacher
       const existingTemplate = await this.prisma.lessonTemplate.findFirst({
         where: {
           teacherId: dto.teacherId,
           name: dto.name,
-          timeSlot: dto.timeSlot,
           isDeleted: false,
         },
       });
       if (existingTemplate) {
         throw new BadRequestException(
-          'A lesson template with the same name and time slot already exists for this teacher',
+          'A lesson template with this name already exists for this teacher',
         );
       }
 
@@ -43,7 +43,9 @@ export class LessonTemplateService {
         data: {
           teacherId: dto.teacherId,
           name: dto.name,
-          timeSlot: dto.timeSlot,
+          durationMinutes: dto.durationMinutes,
+          price: dto.price,
+          description: dto.description,
           isActive: dto.isActive ?? true,
         },
       });
@@ -158,7 +160,6 @@ export class LessonTemplateService {
           id: { not: id },
           teacherId,
           name: dto.name ?? existingTemplate.name,
-          timeSlot: dto.timeSlot ?? existingTemplate.timeSlot,
           isDeleted: false,
         },
       });
@@ -247,6 +248,42 @@ export class LessonTemplateService {
       console.error(`Error deleting lesson template with id ${id}:`, error);
       throw new InternalServerErrorException(
         'Failed to delete lesson template',
+      );
+    }
+  }
+
+  async findByTeacherId(teacherId: string) {
+    try {
+      const [templates, count] = await this.prisma.$transaction([
+        this.prisma.lessonTemplate.findMany({
+          where: { isDeleted: false, teacherId },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.lessonTemplate.count({
+          where: { isDeleted: false },
+        }),
+      ]);
+
+      if (!count) {
+        return { message: 'No Lesson templates found' };
+      }
+
+      return {
+        statusCode: 200,
+        message: 'Lesson template retrieved successfully',
+        templates,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      console.error(
+        `Error retrieving lesson template with teacherId ${teacherId}:`,
+        error,
+      );
+      throw new InternalServerErrorException(
+        'Failed to retrieve lesson template',
       );
     }
   }

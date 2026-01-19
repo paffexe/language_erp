@@ -136,17 +136,20 @@ model Student {
 }
 
 model LessonTemplate {
-  id        String    @id @default(uuid())
-  teacher   Teacher   @relation(fields: [teacherId], references: [id])
-  teacherId String
-  name      String
-  timeSlot  String
-  isActive  Boolean   @default(true)
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id              String    @id @default(uuid())
+  teacher         Teacher   @relation(fields: [teacherId], references: [id])
+  teacherId       String
+  name            String
+  durationMinutes Int      
+  price           Float     
+  description     String?  
+  isActive        Boolean   @default(true)
+  isDeleted       Boolean   @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
+  @@unique([teacherId, name, isDeleted])
   @@map("lessonTemplate")
 }
 

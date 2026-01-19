@@ -40,7 +40,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly smsService: SmsService,
     private readonly teacherService: TeacherService,
-  ) { }
+  ) {}
 
   async loginAdmin(dto: LoginDto, res: Response) {
     // Check for env superadmin first

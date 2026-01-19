@@ -1,39 +1,3 @@
-// import { ApiProperty } from '@nestjs/swagger';
-// import { TransactionStatus } from './create-transaction.dto';
-
-// export class TransactionResponseDto {
-//   @ApiProperty()
-//   id: string;
-
-//   @ApiProperty()
-//   lessonId: string;
-
-//   @ApiProperty()
-//   studentId: string;
-
-//   @ApiProperty({ example: 50000 })
-//   price: number;
-
-//   @ApiProperty({ enum: TransactionStatus })
-//   status: TransactionStatus;
-
-//   @ApiProperty({ nullable: true })
-//   canceledTime: Date | null;
-
-//   @ApiProperty({ nullable: true })
-//   performedTime: Date | null;
-
-//   @ApiProperty({ nullable: true })
-//   reason: string | null;
-
-//   @ApiProperty()
-//   createdAt: Date;
-
-//   @ApiProperty()
-//   updatedAt: Date;
-// }
-
-
 import { ApiProperty } from '@nestjs/swagger';
 import { TransactionStatus } from '../../../generated/prisma/enums';
 

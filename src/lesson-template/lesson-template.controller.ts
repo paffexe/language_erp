@@ -110,4 +110,15 @@ export class LessonTemplateController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.lessonTemplateService.remove(id);
   }
+
+  @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)
+  @Get(':id/teacher')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get lesson template by teacherId' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNotFoundResponse({ description: 'Lesson template not found' })
+  findByTeacherId(@Param('id', ParseUUIDPipe) id: string) {
+    return this.lessonTemplateService.findByTeacherId(id);
+  }
 }

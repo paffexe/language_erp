@@ -8,10 +8,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { google } from 'googleapis';
+import { LessonQueryDto } from './dto/lesson-query.dto';
+import { PaginatedResponseDto } from 'src/common/pagination/response/pagination-response.dto';
+import { LessonResponseDto } from './dto/lessonResponse.dto';
+import { Prisma } from 'generated/prisma/client';
+import { PaginationHelper } from 'src/common/helpers/pagination-helper';
 
 @Injectable()
 export class LessonService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   /// generating google meet link
   private async generateGoogleMeetLink(
@@ -95,13 +100,6 @@ export class LessonService {
       if (!findTeacher) {
         throw new NotFoundException('Teacher not found');
       }
-
-      // const student = await this.prisma.student.findUnique({
-      //   where: { id: dto.studentId },
-      // });
-      // if (!student) {
-      //   throw new NotFoundException('Student not found');
-      // }
 
       const durationMs = endTime.getTime() - startTime.getTime();
       const durationMinutes = durationMs / (1000 * 60);
@@ -233,63 +231,90 @@ export class LessonService {
     }
   }
 
-  async findAll() {
-    try {
-      const [lessons, count] = await this.prisma.$transaction([
-        this.prisma.lesson.findMany({
-          where: { isDeleted: false },
-          include: {
-            teacher: true,
-            student: true,
-          },
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.prisma.lesson.count({
-          where: { isDeleted: false },
-        }),
-      ]);
+  async findAll(
+    query: LessonQueryDto,
+  ): Promise<PaginatedResponseDto<LessonResponseDto>> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      teacherId,
+      studentId,
+      isPaid,
+      startDate,
+      endDate,
+    } = query;
 
-      return {
-        statusCode: 200,
-        message: 'Lessons retrieved successfully',
-        count,
-        lessons: lessons || [],
+    const where: Prisma.LessonWhereInput = {
+      isDeleted: false,
+    };
+
+    if (search) {
+      where.name = {
+        contains: search,
+        mode: 'insensitive',
       };
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException('Lessons retrieval failed');
     }
-  }
 
-  async findOne(id: string) {
-    try {
-      const lesson = await this.prisma.lesson.findFirst({
-        where: { id, isDeleted: false },
+    if (status) where.status = status;
+    if (teacherId) where.teacherId = teacherId;
+    if (studentId) where.studentId = studentId;
+    if (isPaid !== undefined) where.isPaid = isPaid;
+
+    if (startDate || endDate) {
+      where.startTime = {
+        ...(startDate && { gte: startDate }),
+        ...(endDate && { lte: endDate }),
+      };
+    }
+
+    return PaginationHelper.paginate<
+      Prisma.LessonGetPayload<{
+        include: { teacher: true; student: true };
+      }>,
+      LessonResponseDto
+    >(
+      this.prisma.lesson,
+      where,
+      { page, limit },
+      {
+        orderBy: { createdAt: 'desc' },
         include: {
           teacher: true,
           student: true,
         },
-      });
+      },
+      (lesson) =>
+        new LessonResponseDto({
+          ...lesson,
+          price: lesson.price ? Number(lesson.price) : undefined,
+          message: 'Lesson is found',
+        }),
+    );
+  }
 
-      if (!lesson) {
-        throw new NotFoundException('Lesson not found');
-      }
+  async findOne(id: string): Promise<LessonResponseDto> {
+    const lesson = await this.prisma.lesson.findFirst({
+      where: {
+        id,
+        isDeleted: false,
+      },
+      include: {
+        teacher: true,
+        student: true,
+      },
+    });
 
-      return {
-        statusCode: 200,
-        message: 'Lesson retrieved successfully',
-        lesson,
-      };
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException('Lesson retrieval failed');
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
     }
+
+    return new LessonResponseDto({
+      ...lesson,
+      price: lesson.price ? Number(lesson.price) : undefined,
+      message: 'Lesson is found',
+    });
   }
 
   async update(id: string, dto: UpdateLessonDto) {
@@ -443,23 +468,65 @@ export class LessonService {
     };
   }
 
-  async findAllbyTeacher(teacherId: string) {
-    const lessons = await this.prisma.lesson.findMany({
-      where: { teacherId, isDeleted: false },
-      // include: { student: true },
-    });
+  async findAllByTeacher(
+    teacherId: string,
+    query: LessonQueryDto,
+  ): Promise<PaginatedResponseDto<LessonResponseDto>> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      studentId,
+      isPaid,
+      startDate,
+      endDate,
+    } = query;
 
-    if (!lessons.length) {
-      // throw new NotFoundException('No lessons found for this teacher');
-      return {
-        message: 'No lessons found for this teacher',
-        lessons: [],
+    const where: Prisma.LessonWhereInput = {
+      teacherId,
+      isDeleted: false,
+    };
+
+    if (search) {
+      where.name = {
+        contains: search,
+        mode: 'insensitive',
       };
     }
 
-    return {
-      message: 'Lessons retrieved successfully',
-      lessons,
-    };
+    if (status) where.status = status;
+    if (studentId) where.studentId = studentId;
+    if (isPaid !== undefined) where.isPaid = isPaid;
+
+    if (startDate || endDate) {
+      where.startTime = {
+        ...(startDate && { gte: startDate }),
+        ...(endDate && { lte: endDate }),
+      };
+    }
+
+    return PaginationHelper.paginate<
+      Prisma.LessonGetPayload<{
+        include: { student: true };
+      }>,
+      LessonResponseDto
+    >(
+      this.prisma.lesson,
+      where,
+      { page, limit },
+      {
+        orderBy: { startTime: 'asc' },
+        include: {
+          student: true,
+        },
+      },
+      (lesson) =>
+        new LessonResponseDto({
+          ...lesson,
+          price: lesson.price ? Number(lesson.price) : undefined,
+          message: 'Lesson is found',
+        }),
+    );
   }
 }

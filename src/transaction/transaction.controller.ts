@@ -28,6 +28,7 @@ import { FindTransactionsDto } from './dto/find-transaction.dto';
 import { AdminAuthGuard } from '../common/guards/jwtAdmin-auth.guard';
 import { RolesGuard } from '../common/guards/jwtRoles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { TransactionQueryDto } from './dto/transQuery.dto';
 
 @ApiTags('Transactions')
 @Controller('transactions')
@@ -61,7 +62,7 @@ export class TransactionController {
     description: 'List of transactions',
     type: TransactionListResponseDto,
   })
-  findAll(@Query() query: FindTransactionsDto) {
+  findAll(@Query() query: TransactionQueryDto) {
     return this.transactionService.findAll(query);
   }
 
