@@ -10,8 +10,11 @@ import * as bcrypt from 'bcrypt';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
-// import sharp from 'sharp';
-// import sharp from 'sharp';
+import { PaginatedResponseDto } from 'src/common/pagination/response/pagination-response.dto';
+import { TeacherResponseDto } from './dto/teacherResponse.dto';
+import { PaginationHelper } from 'src/common/helpers/pagination-helper';
+import { Prisma } from 'generated/prisma/client';
+import { Teacher } from 'generated/prisma/browser';
 const sharp = require('sharp');
 
 @Injectable()
@@ -88,13 +91,26 @@ export class TeacherService {
     };
   }
 
-  async findAll() {
-    const teachers = await this.prismaService.teacher.findMany();
+  // async findAll() {
+  //   const teachers = await this.prismaService.teacher.findMany();
 
-    return {
-      message: 'Teachers retrieved successfully',
-      teachers: teachers || [],
-    };
+  //   return {
+  //     message: 'Teachers retrieved successfully',
+  //     teachers: teachers || [],
+  //   };
+  // }
+
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<PaginatedResponseDto<TeacherResponseDto>> {
+    return PaginationHelper.paginate<Teacher, TeacherResponseDto>(
+      this.prismaService.teacher,
+      { isDeleted: false },
+      { page, limit },
+      { orderBy: { createdAt: 'desc' } },
+      (teacher: Teacher) => new TeacherResponseDto(teacher),
+    );
   }
 
   async findOne(id: string) {
@@ -243,7 +259,7 @@ export class TeacherService {
 
     // Delete the file
     const imagePath = join('./', teacher.imageUrl);
-    await unlink(imagePath).catch(() => { });
+    await unlink(imagePath).catch(() => {});
 
     // Update database
     const updatedTeacher = await this.prismaService.teacher.update({

@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { TeacherService } from './teacher.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
@@ -32,6 +33,8 @@ import { TeacherAuthGuard } from '../common/guards/user/jwtUser-auth.guard';
 import { CombinedAuthGuard } from '../common/guards/both/jwtCombinedAuth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/config/multer.config';
+import { PaginatedResponseDto } from 'src/common/pagination/response/pagination-response.dto';
+import { TeacherResponseDto } from './dto/teacherResponse.dto';
 
 @ApiTags('teacher')
 @ApiBearerAuth()
@@ -74,8 +77,11 @@ export class TeacherController {
     description: 'Forbidden. Insufficient permissions.',
   })
   @ApiSecurity('JWT-admin-auth')
-  findAll() {
-    return this.teacherService.findAll();
+  findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<PaginatedResponseDto<TeacherResponseDto>> {
+    return this.teacherService.findAll(page, limit);
   }
 
   @UseGuards(CombinedAuthGuard, TeacherSelfOrSuperAdminGuard)

@@ -10,6 +10,8 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -27,11 +29,12 @@ import { StudentResponseDto } from './dto/student-response.dto';
 import { AdminAuthGuard } from '../common/guards/jwtAdmin-auth.guard';
 import { RolesGuard } from '../common/guards/jwtRoles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PaginatedResponseDto } from 'src/common/pagination/response/pagination-response.dto';
 
 @ApiTags('Students')
 @Controller('students')
 export class StudentController {
-  constructor(private readonly studentService: StudentService) { }
+  constructor(private readonly studentService: StudentService) {}
 
   @Post()
   @ApiBearerAuth()
@@ -47,8 +50,11 @@ export class StudentController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all students with search and pagination' })
   @ApiQuery({ type: StudentQueryDto })
-  findAll(@Query() query: StudentQueryDto) {
-    return this.studentService.findAll(query);
+  findAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ): Promise<PaginatedResponseDto<StudentResponseDto>> {
+    return this.studentService.findAll(page, limit);
   }
 
   @UseGuards(AdminAuthGuard, RolesGuard)

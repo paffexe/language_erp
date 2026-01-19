@@ -8,6 +8,10 @@ import { UpdateStudentDto } from './dto/update-student.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { StudentQueryDto } from './dto/student-query.dto';
 import { LessonService } from '../lesson/lesson.service';
+import { StudentResponseDto } from './dto/student-response.dto';
+import { PaginatedResponseDto } from 'src/common/pagination/response/pagination-response.dto';
+import { PaginationHelper } from 'src/common/helpers/pagination-helper';
+import { Student } from 'generated/prisma/client';
 
 @Injectable()
 export class StudentService {
@@ -30,17 +34,30 @@ export class StudentService {
     }
   }
 
-  async findAll(query: StudentQueryDto) {
-    const students = await this.prisma.student.findMany();
+  // async findAll(query: StudentQueryDto) {
+  //   const students = await this.prisma.student.findMany();
 
-    if (students.length === 0) {
-      throw new NotFoundException('No students found');
-    }
+  //   if (students.length === 0) {
+  //     throw new NotFoundException('No students found');
+  //   }
 
-    return {
-      message: 'Students retrieved successfully',
-      students,
-    };
+  //   return {
+  //     message: 'Students retrieved successfully',
+  //     students,
+  //   };
+  // }
+
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<PaginatedResponseDto<StudentResponseDto>> {
+    return PaginationHelper.paginate<Student, StudentResponseDto>(
+      this.prisma.student,
+      { isDeleted: false },
+      { page, limit },
+      { orderBy: { createdAt: 'desc' } },
+      (student: Student) => new StudentResponseDto(student),
+    );
   }
 
   async findOne(id: string) {
